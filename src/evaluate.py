@@ -21,8 +21,12 @@ def main():
     p.add_argument("--samples", type=int, default=5)
     p.add_argument("--seed", type=int, default=None)
     p.add_argument("--max-new-tokens", type=int, default=256)
+    p.add_argument("--batch-size", type=int, default=1,
+                   help="number of prompts generated together; use the same value for comparisons")
     p.add_argument("--output", default="runs/eval.jsonl")
     args = p.parse_args()
+    if args.batch_size < 1:
+        raise SystemExit("--batch-size must be at least 1")
     if not torch.cuda.is_available():
         raise SystemExit("CUDA is unavailable; GPU model evaluation cannot run here.")
     config = json.loads(Path("config.json").read_text())
@@ -32,6 +36,9 @@ def main():
     model_id = args.base_model or args.model
     revision = args.revision or config["revision"]
     tokenizer = AutoTokenizer.from_pretrained(model_id, revision=revision)
+    tokenizer.padding_side = "left"
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token = tokenizer.eos_token
     model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.bfloat16,
                                                   device_map="cuda", attn_implementation="sdpa",
                                                   revision=revision)
@@ -41,29 +48,34 @@ def main():
     rows = read_jsonl(args.data)
     records, total_tokens, errs, correct1, correctk = [], 0, 0, 0, 0
     group_stds, zero_var_groups, reward_sum = [], 0, 0
-    for row in rows:
-        messages = [{"role": "user", "content": row["prompt"]}]
-        inputs = tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=True,
-                                                 enable_thinking=False, return_tensors="pt",
-                                                 return_dict=True)
+    for start in range(0, len(rows), args.batch_size):
+        batch_rows = rows[start:start + args.batch_size]
+        messages = [[{"role": "user", "content": row["prompt"]}] for row in batch_rows]
+        inputs = tokenizer.apply_chat_template(
+            messages, tokenize=True, add_generation_prompt=True, enable_thinking=False,
+            padding=True, return_tensors="pt", return_dict=True)
         inputs = {k: v.to(model.device) for k, v in inputs.items()}
-        input_ids = inputs["input_ids"]
+        prompt_width = inputs["input_ids"].shape[1]
         with torch.inference_mode():
             out = model.generate(**inputs, do_sample=args.samples > 1, temperature=0.7 if args.samples > 1 else None,
                                  num_return_sequences=args.samples, max_new_tokens=args.max_new_tokens,
                                  pad_token_id=tokenizer.eos_token_id)
-        completions = [tokenizer.decode(seq[input_ids.shape[1]:], skip_special_tokens=True) for seq in out]
-        scores = [score(c, row["answer"]) for c in completions]
-        group_stds.append(statistics.pstdev(scores))
-        zero_var_groups += int(len(set(scores)) == 1)
-        reward_sum += sum(scores)
-        lengths = [len(tokenizer.encode(c, add_special_tokens=False)) for c in completions]
-        total_tokens += sum(lengths)
-        errs += sum(format_error(c) for c in completions)
-        correct1 += scores[0]
-        correctk += int(any(scores))
-        records.append({"prompt": row["prompt"], "gold": row["answer"], "completions": completions,
-                        "scores": scores, "group_reward_std": statistics.pstdev(scores), "lengths": lengths})
+        for index, row in enumerate(batch_rows):
+            sequences = out[index * args.samples:(index + 1) * args.samples]
+            completions = [tokenizer.decode(seq[prompt_width:], skip_special_tokens=True)
+                           for seq in sequences]
+            scores = [score(c, row["answer"]) for c in completions]
+            group_std = statistics.pstdev(scores)
+            group_stds.append(group_std)
+            zero_var_groups += int(len(set(scores)) == 1)
+            reward_sum += sum(scores)
+            lengths = [len(tokenizer.encode(c, add_special_tokens=False)) for c in completions]
+            total_tokens += sum(lengths)
+            errs += sum(format_error(c) for c in completions)
+            correct1 += scores[0]
+            correctk += int(any(scores))
+            records.append({"prompt": row["prompt"], "gold": row["answer"], "completions": completions,
+                            "scores": scores, "group_reward_std": group_std, "lengths": lengths})
     n = len(rows)
     summary = {"n": n, "seed": seed, "model": args.model, "revision": revision,
                "pass@1": correct1 / n, f"pass@{args.samples}": correctk / n,

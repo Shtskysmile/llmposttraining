@@ -9,7 +9,7 @@ import torch
 from datasets import Dataset
 from peft import LoraConfig
 from trl import GRPOConfig, GRPOTrainer
-from transformers import TrainerCallback
+from transformers import AutoModelForCausalLM, TrainerCallback
 
 from verifier import score
 
@@ -82,6 +82,9 @@ def main():
     p.add_argument("--generations", type=int, default=None)
     p.add_argument("--completion-length", type=int, default=None)
     p.add_argument("--seed", type=int, default=None)
+    p.add_argument("--init-adapter", default=None,
+                   help="continue GRPO from an existing PEFT LoRA adapter")
+    p.add_argument("--learning-rate", type=float, default=None)
     p.add_argument("--smoke", action="store_true", help="use 0.6B, 3 steps, 2 samples and 96 tokens")
     args = p.parse_args()
     cfg = json.loads(Path(args.config).read_text())
@@ -116,20 +119,46 @@ def main():
         output_dir=args.output, max_steps=steps,
         per_device_train_batch_size=cfg["per_device_train_batch_size"], gradient_accumulation_steps=1,
         num_generations=generations, max_prompt_length=cfg["max_prompt_length"],
-        max_completion_length=completion_length, learning_rate=cfg["learning_rate"],
+        max_completion_length=completion_length,
+        learning_rate=args.learning_rate or cfg["learning_rate"],
         logging_steps=1, save_strategy="no", report_to="none", seed=seed,
         bf16=True, gradient_checkpointing=False, disable_dropout=True, scale_rewards=False,
-        model_init_kwargs={"revision": cfg["revision"], "torch_dtype": torch.bfloat16, "attn_implementation": "sdpa"},
+        model_init_kwargs=(None if args.init_adapter else {
+            "revision": cfg["revision"], "torch_dtype": torch.bfloat16,
+            "attn_implementation": "sdpa"}),
         log_completions=True, num_completions_to_print=generations,
     )
-    trainer = EntropyGRPOTrainer(model=model_name, reward_funcs=reward_func, args=train_args,
-                                 train_dataset=ds, peft_config=lora, processing_class=tokenizer)
+    if args.init_adapter:
+        from peft import PeftModel
+        base = AutoModelForCausalLM.from_pretrained(
+            model_name, revision=cfg["revision"], torch_dtype=torch.bfloat16,
+            attn_implementation="sdpa", device_map="cuda")
+        model = PeftModel.from_pretrained(base, args.init_adapter, is_trainable=True)
+        peft_config = None
+    else:
+        model, peft_config = model_name, lora
+    trainer = EntropyGRPOTrainer(model=model, reward_funcs=reward_func, args=train_args,
+                                 train_dataset=ds, peft_config=peft_config, processing_class=tokenizer)
+    if args.init_adapter and train_args.beta != 0.0:
+        # For SFT -> GRPO, KL must be measured from the SFT policy. TRL's
+        # implicit PEFT reference disables the adapter and compares to base,
+        # which would charge the initial SFT update as KL from the outset.
+        from peft import PeftModel
+        ref_base = AutoModelForCausalLM.from_pretrained(
+            model_name, revision=cfg["revision"], torch_dtype=torch.bfloat16,
+            attn_implementation="sdpa", device_map="cuda")
+        ref = PeftModel.from_pretrained(ref_base, args.init_adapter, is_trainable=False)
+        ref.eval()
+        trainer.ref_model = trainer.accelerator.prepare_model(ref, evaluation_mode=True)
     trainer.add_callback(JsonlMetricsCallback(args.output))
     Path(args.output).mkdir(parents=True, exist_ok=True)
     Path(args.output, "run_config.json").write_text(json.dumps({
         "model": model_name, "revision": cfg["revision"], "steps": steps, "generations": generations,
         "max_completion_length": completion_length, "seed": seed,
         "dataset": args.data, "dataset_rows": len(ds), "precision": "bf16", "adapter": "LoRA",
+        "init_adapter": args.init_adapter,
+        "reference_policy": "initial_adapter" if args.init_adapter else "base_model",
+        "learning_rate": args.learning_rate or cfg["learning_rate"],
     }, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"model": model_name, "steps": steps, "generations": generations,
                       "max_completion_length": completion_length, "seed": seed,

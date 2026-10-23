@@ -2,6 +2,8 @@
 
 Small, reproducible interview project for post-training: train a Qwen3 policy with TRL GRPO and LoRA using only exact, programmatically checked integer answers. It deliberately targets a short single-GPU experiment, not a benchmark claim.
 
+For a detailed Chinese walkthrough of the datasets, verifier, training stages, metrics, and limitations, see [docs/实验流程说明.md](docs/实验流程说明.md). The measured results and artifacts are summarized in [RESULTS.md](RESULTS.md).
+
 ## Host snapshot and constraints
 
 Checked 2026-10-23 as root: NVIDIA A100-SXM4-40GB, driver 595.84 (reports CUDA 13.2), 16 CPU cores / about 47 GiB RAM, 196 GiB filesystem with about 157 GiB free. The host Conda Python is 3.14.7 and has none of the ML packages installed. The default sandbox hides GPU devices; run training from the host shell or in an approved host-permission context. The user supplied A30 specs, but the live host reports A100; scripts use one visible GPU and do not hard-code a model-specific device.
@@ -71,6 +73,29 @@ Report a compact table with model, seed, steps, group size, completion limit, te
 
 The baseline, 20-step group-4 run, group-size-2 ablation, fixed test evaluations, and a post-change speed smoke have completed. Results, training diagnostics, manual verifier audit, and limits are in [RESULTS.md](RESULTS.md). On this 48-question test, pass@1 changed from 81.3% at baseline to 83.3% for group 4 and 81.3% for group 2; this is too small a sample to support a general performance claim. Pass@5 is near saturation, and answer-format errors remain about 100%.
 
+A later expanded-data rerun used 256 train, 64 validation, and 96 test rows and 40 GRPO steps. Validation improved by about 3 points, but the larger test did not: pass@1 was 82.3% for base and 79.2% after GRPO. This scaled replicate doubles both data size and training steps, so it does not isolate which caused the difference.
+
 The live host is an A100 with 40 GiB, while the originally supplied target was an A30 with 24 GiB. The measured training peak was about 17 GiB, so the current batch 8 configuration also fits the stated 24 GiB target with some margin. The entropy-diagnostic calculation is vectorized to reduce CPU/GPU synchronization without changing the training objective. A 3-step timing comparison was noisy, so the training batch and core GRPO settings were left unchanged. Increasing them may improve sample throughput on a 40 GiB card, but increases activation/KV memory and changes the experiment's effective batch; measure it in a separate run before adopting it on a 24 GiB card.
 
 The completed outputs are stored under `runs/`; do not reuse those directories for new experiments. Use a new `--output` path and record any changed seed, group size, batch size, or generation limit.
+
+## Optional SFT -> GRPO follow-up
+
+An answer-only SFT run learned the requested tags but scored zero on arithmetic, so the more useful follow-up trains on deterministic, program-checked intermediate arithmetic steps. The available trace SFT and SFT -> GRPO results are documented in `RESULTS.md`; this short sequence preserved format compliance but did not improve validation accuracy.
+
+In the follow-up, trace SFT reached 68.8% pass@1 / 71.9% pass@4 on validation, versus 71.9% / 81.3% for the base model. Twenty GRPO steps from that SFT adapter on fresh generated prompts preserved 0% format error but did not improve pass@1 or pass@4. The sequence is reproducible, but this run is a negative result for accuracy; see the Chinese walkthrough for data generation and KL-reference details.
+
+```bash
+python data/generate.py --out data/seed2027 --seed 2027
+python src/train_sft.py --target-mode trace --epochs 1 --batch-size 4 \
+  --learning-rate 0.0001 --seed 17 --data data/train.jsonl \
+  --output runs/sft_trace_seed17
+python src/train.py --steps 20 --generations 4 --completion-length 320 \
+  --seed 17 --init-adapter runs/sft_trace_seed17 \
+  --data data/seed2027/train.jsonl --output runs/sft_grpo_trace_g4_seed17
+python src/evaluate.py --model runs/sft_grpo_trace_g4_seed17 \
+  --base-model Qwen/Qwen3-1.7B --data data/validation.jsonl --samples 4 \
+  --max-new-tokens 256 --seed 17 --output runs/sft_grpo_trace_validation.jsonl
+```
+
+When `--init-adapter` is set, the trainer loads a frozen copy of that adapter as the KL reference. This keeps the KL penalty anchored at the SFT policy. For the direct base-to-GRPO runs, the reference remains the pinned base model.

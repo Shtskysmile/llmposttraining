@@ -1,0 +1,15 @@
+{
+  "model": "Qwen/Qwen3-1.7B",
+  "revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+  "steps": 40,
+  "generations": 4,
+  "max_completion_length": 320,
+  "seed": 17,
+  "dataset": "data/expanded_seed2028/train.jsonl",
+  "dataset_rows": 256,
+  "precision": "bf16",
+  "adapter": "LoRA",
+  "init_adapter": null,
+  "reference_policy": "base_model",
+  "learning_rate": 1e-05
+}

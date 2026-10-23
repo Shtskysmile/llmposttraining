@@ -1,0 +1,14 @@
+{
+  "model": "Qwen/Qwen3-1.7B",
+  "revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+  "seed": 17,
+  "dataset": "data/train.jsonl",
+  "dataset_rows": 128,
+  "epochs": 1.0,
+  "batch_size": 4,
+  "learning_rate": 0.0001,
+  "max_sequence_length": 384,
+  "objective": "response-only SFT on <answer>integer</answer>",
+  "precision": "bf16",
+  "adapter": "LoRA"
+}
