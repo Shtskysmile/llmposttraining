@@ -1,0 +1,15 @@
+env-grpo/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Keep lightweight experiment records; omit duplicated model/tokenizer artifacts.
+runs/*/adapter_model.safetensors
+runs/*/tokenizer.json
+runs/*/tokenizer_config.json
+runs/*/merges.txt
+runs/*/vocab.json
+runs/*/training_args.bin
+runs/*/README.md
+runs/*/added_tokens.json
+runs/*/special_tokens_map.json

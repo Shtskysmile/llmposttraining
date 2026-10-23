@@ -1,0 +1,16 @@
+{
+  "model": "Qwen/Qwen3-1.7B",
+  "revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+  "smoke_model": "Qwen/Qwen3-0.6B",
+  "seed": 17,
+  "max_steps": 20,
+  "num_generations": 4,
+  "per_device_train_batch_size": 8,
+  "gradient_accumulation_steps": 1,
+  "max_prompt_length": 192,
+  "max_completion_length": 320,
+  "learning_rate": 0.00001,
+  "lora_r": 16,
+  "lora_alpha": 32,
+  "lora_dropout": 0.05
+}

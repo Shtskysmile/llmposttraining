@@ -1,0 +1,10 @@
+# Python 3.11 recommended. Install a CUDA-enabled torch wheel matching the host driver first.
+torch==2.7.1
+transformers==4.51.3
+trl==0.18.1
+peft==0.15.2
+accelerate==1.6.0
+datasets==3.6.0
+bitsandbytes==0.46.1
+safetensors==0.5.3
+sentencepiece==0.2.0
