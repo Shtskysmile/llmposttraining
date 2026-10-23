@@ -2,7 +2,7 @@
 
 Small, reproducible interview project for post-training: train a Qwen3 policy with TRL GRPO and LoRA using only exact, programmatically checked integer answers. It deliberately targets a short single-GPU experiment, not a benchmark claim.
 
-For a detailed Chinese walkthrough of the datasets, verifier, training stages, metrics, and limitations, see [docs/实验流程说明.md](docs/实验流程说明.md). The measured results and artifacts are summarized in [RESULTS.md](RESULTS.md).
+For a detailed Chinese walkthrough of the datasets, verifier, and training stages, see [docs/实验流程说明.md](docs/实验流程说明.md). A compact report with hyperparameters, GPU memory, and accuracy across variants is in [docs/实验结果汇总报告.md](docs/实验结果汇总报告.md); detailed run notes and artifacts are in [RESULTS.md](RESULTS.md).
 
 ## Host snapshot and constraints
 
