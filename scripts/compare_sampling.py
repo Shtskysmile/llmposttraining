@@ -11,7 +11,7 @@ from pathlib import Path
 PAIRING_KEYS = (
     "data_sha256", "n", "mode", "revision", "seed", "num_samples",
     "max_total_tokens", "max_new_tokens", "max_tool_calls", "temperature", "top_p",
-    "per_sample_token_budgets", "majority_vote_rule", "unparseable_answers_in_vote",
+    "top_k", "per_sample_token_budgets", "majority_vote_rule", "unparseable_answers_in_vote",
     "sampling", "seed_strategy", "gpu",
 )
 
