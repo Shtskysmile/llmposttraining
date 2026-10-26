@@ -1,0 +1,16 @@
+{
+  "model": "runs/tool_math_grpo_fixed_scale_seed5090_budget10000_klclip5",
+  "base_model": "/root/.cache/modelscope/Qwen2.5-Math-7B-Instruct",
+  "revision": null,
+  "data": "data/tool_math_scale_seed5090/test.jsonl",
+  "mode": "tool",
+  "n": 300,
+  "accuracy": 0.7533333333333333,
+  "format_error_rate": 0.0,
+  "mean_generated_tokens": 62.6,
+  "mean_tool_calls": 0.7533333333333333,
+  "tool_execution_success_rate": 1.0,
+  "truncated_rate": 0.0,
+  "elapsed_seconds": 859.7691472520019,
+  "peak_vram_gib": 14.555227279663086
+}

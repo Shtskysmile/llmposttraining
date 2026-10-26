@@ -13,3 +13,8 @@ runs/*/training_args.bin
 runs/*/README.md
 runs/*/added_tokens.json
 runs/*/special_tokens_map.json
+
+# Public benchmark copies are fetched on demand; retain only their manifests/results.
+/data/external/*.jsonl
+/data/external/math500.jsonl
+/data/external/math500.manifest.json

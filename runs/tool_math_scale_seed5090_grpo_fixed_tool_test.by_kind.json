@@ -1,0 +1,54 @@
+{
+  "input": "runs/tool_math_scale_seed5090_grpo_fixed_tool_test.jsonl",
+  "n": 300,
+  "overall": {
+    "n": 300,
+    "accuracy": 0.7533333333333333,
+    "format_error_rate": 0.0,
+    "answer_tag_rate": 1.0,
+    "strict_answer_tag_rate": 1.0,
+    "boxed_answer_rate": 1.0,
+    "mean_generated_tokens": 62.6,
+    "mean_tool_calls": 0.7533333333333333,
+    "tool_execution_success_rate": 1.0,
+    "truncated_rate": 0.0
+  },
+  "by_kind": {
+    "conditional_probability": {
+      "n": 100,
+      "accuracy": 0.44,
+      "format_error_rate": 0.0,
+      "answer_tag_rate": 1.0,
+      "strict_answer_tag_rate": 1.0,
+      "boxed_answer_rate": 1.0,
+      "mean_generated_tokens": 56.94,
+      "mean_tool_calls": 0.51,
+      "tool_execution_success_rate": 1.0,
+      "truncated_rate": 0.0
+    },
+    "constrained_counting": {
+      "n": 100,
+      "accuracy": 0.98,
+      "format_error_rate": 0.0,
+      "answer_tag_rate": 1.0,
+      "strict_answer_tag_rate": 1.0,
+      "boxed_answer_rate": 1.0,
+      "mean_generated_tokens": 80.56,
+      "mean_tool_calls": 1,
+      "tool_execution_success_rate": 1.0,
+      "truncated_rate": 0.0
+    },
+    "modular_system": {
+      "n": 100,
+      "accuracy": 0.84,
+      "format_error_rate": 0.0,
+      "answer_tag_rate": 1.0,
+      "strict_answer_tag_rate": 1.0,
+      "boxed_answer_rate": 1.0,
+      "mean_generated_tokens": 50.3,
+      "mean_tool_calls": 0.75,
+      "tool_execution_success_rate": 1.0,
+      "truncated_rate": 0.0
+    }
+  }
+}

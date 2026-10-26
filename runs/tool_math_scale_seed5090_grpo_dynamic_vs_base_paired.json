@@ -1,0 +1,18 @@
+{
+  "baseline": "runs/tool_math_scale_seed5090_base_tool_test.jsonl",
+  "candidate": "runs/tool_math_scale_seed5090_grpo_dynamic_tool_test.jsonl",
+  "n": 300,
+  "baseline_accuracy": 0.5533333333333333,
+  "candidate_accuracy": 0.76,
+  "paired_accuracy_difference": 0.20666666666666667,
+  "bootstrap_95_percentile_ci": [
+    0.15333333333333332,
+    0.2633333333333333
+  ],
+  "bootstrap_samples": 10000,
+  "bootstrap_seed": 5090,
+  "baseline_only_correct": 12,
+  "candidate_only_correct": 74,
+  "exact_mcnemar_two_sided_p": 4.6897604919147226e-12,
+  "interpretation_scope": "question-sampling uncertainty only; excludes training-seed variation"
+}

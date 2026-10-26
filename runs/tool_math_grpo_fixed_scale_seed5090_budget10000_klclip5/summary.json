@@ -1,0 +1,17 @@
+{
+  "steps": 43,
+  "configured_max_steps": 200,
+  "mode": "fixed",
+  "accepted_groups": 43,
+  "optimizer_updates": 43,
+  "attempted_groups": 43,
+  "discarded_zero_variance_groups": 0,
+  "discard_rate": 0.0,
+  "generated_tokens_including_discarded": 10091,
+  "rollout_token_budget": 10000,
+  "rollout_budget_overshoot_tokens": 91,
+  "discarded_generated_tokens": 0,
+  "tool_calls": 129,
+  "elapsed_seconds": 1025.2953240970019,
+  "peak_vram_gib": 23.216556072235107
+}

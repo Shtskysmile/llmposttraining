@@ -61,7 +61,7 @@ def generate_one(model, tokenizer, prompt, mode, max_new_tokens, max_tool_calls,
         successful_calls += int(result["ok"])
         tool_events.append({"code": action, "result": result})
         messages.append({"role": "assistant", "content": text})
-        messages.append({"role": "user", "content": f"Tool result (success={result['ok']}):\n{result['output']}\nContinue and give the final result in <answer>...</answer>."})
+        messages.append({"role": "user", "content": f"Tool result (success={result['ok']}):\n{result['output']}\nContinue and give the final result in <answer>...</answer> and \\boxed{{}}."})
     return {"completion": "\n".join(whole), "tool_calls": calls,
             "successful_tool_calls": successful_calls, "tool_events": tool_events,
             "generated_tokens": tokens, "truncated": truncated}
@@ -95,15 +95,21 @@ def main():
     rows = load_rows(args.data)
     if args.limit:
         rows = rows[:args.limit]
+    output = Path(args.output or f"runs/tool_math_{args.mode}.jsonl")
+    output.parent.mkdir(parents=True, exist_ok=True)
     records = []
     started = time.perf_counter()
-    for idx, row in enumerate(rows):
-        pred = generate_one(model, tokenizer, row["prompt"], args.mode, args.max_new_tokens,
-                            args.max_tool_calls, args.max_total_tokens)
-        records.append({**row, **pred, "correct": score(pred["completion"], row["answer"]),
-                        "format_error": format_error(pred["completion"])})
-        if (idx + 1) % 10 == 0:
-            print(f"evaluated {idx + 1}/{len(rows)}")
+    with output.open("w", encoding="utf-8") as handle:
+        for idx, row in enumerate(rows):
+            pred = generate_one(model, tokenizer, row["prompt"], args.mode, args.max_new_tokens,
+                                args.max_tool_calls, args.max_total_tokens)
+            record = {**row, **pred, "correct": score(pred["completion"], row["answer"]),
+                      "format_error": format_error(pred["completion"])}
+            records.append(record)
+            handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+            handle.flush()
+            if (idx + 1) % 10 == 0:
+                print(f"evaluated {idx + 1}/{len(rows)}", flush=True)
     elapsed = time.perf_counter() - started
     n = max(1, len(records))
     summary = {"model": args.model, "base_model": args.base_model,
@@ -116,10 +122,7 @@ def main():
             max(1, sum(r["tool_calls"] for r in records))),
         "truncated_rate": sum(r["truncated"] for r in records) / n,
         "elapsed_seconds": elapsed, "peak_vram_gib": torch.cuda.max_memory_allocated() / 2**30}
-    output = args.output or f"runs/tool_math_{args.mode}.jsonl"
-    Path(output).parent.mkdir(parents=True, exist_ok=True)
-    Path(output).write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in records), encoding="utf-8")
-    Path(output).with_suffix(".summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    output.with_suffix(".summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary, indent=2))
 
 

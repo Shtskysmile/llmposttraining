@@ -1,0 +1,2 @@
+# Optional external benchmark answer parsing (MATH-500 and symbolic answers).
+math-verify[antlr4_13_2]==0.9.0

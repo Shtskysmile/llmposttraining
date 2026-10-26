@@ -1,0 +1,18 @@
+{
+  "baseline": "runs/tool_math_qwen25math7b_grpo_fixed_modular_v5_budget1024.jsonl",
+  "candidate": "runs/tool_math_qwen25math7b_grpo_dynamic_modular_v5_budget1024.jsonl",
+  "n": 9,
+  "baseline_accuracy": 0.6666666666666666,
+  "candidate_accuracy": 0.6666666666666666,
+  "paired_accuracy_difference": 0.0,
+  "bootstrap_95_percentile_ci": [
+    0.0,
+    0.0
+  ],
+  "bootstrap_samples": 10000,
+  "bootstrap_seed": 5090,
+  "baseline_only_correct": 0,
+  "candidate_only_correct": 0,
+  "exact_mcnemar_two_sided_p": 1.0,
+  "interpretation_scope": "question-sampling uncertainty only; excludes training-seed variation"
+}

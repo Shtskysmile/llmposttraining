@@ -1,0 +1,8 @@
+{
+  "repository": "HuggingFaceH4/MATH-500",
+  "revision": "6e4ed1a2a79af7d8630a6b768ec859cb5af4d3be",
+  "source_file": "test.jsonl",
+  "source_sha256": "35dc41080a3680858b27fa7e0533d2d547825316fc5dafe5d316f4ccc5a06132",
+  "rows": 500,
+  "prompt_contains_reference_solution": false
+}

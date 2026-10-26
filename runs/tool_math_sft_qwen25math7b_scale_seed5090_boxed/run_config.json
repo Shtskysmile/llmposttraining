@@ -1,0 +1,20 @@
+{
+  "model": "/root/.cache/modelscope/Qwen2.5-Math-7B-Instruct",
+  "revision": null,
+  "seed": 5090,
+  "dataset": "data/tool_math_scale_seed5090/train_trajectories_boxed.jsonl",
+  "dataset_rows": 3000,
+  "dataset_sha256": "915743ebef29de51a0c607e5a737f880b0bb05d016ecc0c42659a743830ecf46",
+  "supervised_assistant_tokens": 240733,
+  "epochs": 1.0,
+  "batch_size": 1,
+  "learning_rate": 2e-05,
+  "max_sequence_length": 2048,
+  "target_mode": "tool_trace",
+  "assistant_end_of_turn_supervised": true,
+  "quantization": "4bit_nf4_double_quant_bf16_compute",
+  "gradient_checkpointing": true,
+  "objective": "assistant-turn-only SFT on verified multi-turn Python tool trajectories",
+  "precision": "bf16",
+  "adapter": "LoRA"
+}

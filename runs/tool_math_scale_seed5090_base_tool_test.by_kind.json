@@ -1,0 +1,54 @@
+{
+  "input": "runs/tool_math_scale_seed5090_base_tool_test.jsonl",
+  "n": 300,
+  "overall": {
+    "n": 300,
+    "accuracy": 0.5533333333333333,
+    "format_error_rate": 0.8566666666666667,
+    "answer_tag_rate": 0.9033333333333333,
+    "strict_answer_tag_rate": 0.14333333333333334,
+    "boxed_answer_rate": 0.9266666666666666,
+    "mean_generated_tokens": 108.98,
+    "mean_tool_calls": 0.7066666666666667,
+    "tool_execution_success_rate": 0.7783018867924528,
+    "truncated_rate": 0.07666666666666666
+  },
+  "by_kind": {
+    "conditional_probability": {
+      "n": 100,
+      "accuracy": 0.39,
+      "format_error_rate": 0.83,
+      "answer_tag_rate": 1.0,
+      "strict_answer_tag_rate": 0.17,
+      "boxed_answer_rate": 1.0,
+      "mean_generated_tokens": 49.46,
+      "mean_tool_calls": 0.4,
+      "tool_execution_success_rate": 1.0,
+      "truncated_rate": 0.0
+    },
+    "constrained_counting": {
+      "n": 100,
+      "accuracy": 0.8,
+      "format_error_rate": 0.98,
+      "answer_tag_rate": 0.99,
+      "strict_answer_tag_rate": 0.02,
+      "boxed_answer_rate": 0.99,
+      "mean_generated_tokens": 119.78,
+      "mean_tool_calls": 0.91,
+      "tool_execution_success_rate": 0.8901098901098901,
+      "truncated_rate": 0.01
+    },
+    "modular_system": {
+      "n": 100,
+      "accuracy": 0.47,
+      "format_error_rate": 0.76,
+      "answer_tag_rate": 0.72,
+      "strict_answer_tag_rate": 0.24,
+      "boxed_answer_rate": 0.79,
+      "mean_generated_tokens": 157.7,
+      "mean_tool_calls": 0.81,
+      "tool_execution_success_rate": 0.5432098765432098,
+      "truncated_rate": 0.22
+    }
+  }
+}

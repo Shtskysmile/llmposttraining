@@ -1,0 +1,18 @@
+{
+  "baseline": "runs/tool_math_scale_seed5090_base_tool_test.jsonl",
+  "candidate": "runs/tool_math_scale_seed5090_sft_boxed_tool_test.jsonl",
+  "n": 300,
+  "baseline_accuracy": 0.5533333333333333,
+  "candidate_accuracy": 0.7733333333333333,
+  "paired_accuracy_difference": 0.22,
+  "bootstrap_95_percentile_ci": [
+    0.16333333333333333,
+    0.27666666666666667
+  ],
+  "bootstrap_samples": 10000,
+  "bootstrap_seed": 5090,
+  "baseline_only_correct": 11,
+  "candidate_only_correct": 77,
+  "exact_mcnemar_two_sided_p": 2.401553173434181e-13,
+  "interpretation_scope": "question-sampling uncertainty only; excludes training-seed variation"
+}

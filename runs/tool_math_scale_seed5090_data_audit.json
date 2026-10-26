@@ -1,0 +1,55 @@
+{
+  "data_dir": "data/tool_math_scale_seed5090",
+  "splits": {
+    "train": {
+      "rows": 3000,
+      "families": {
+        "conditional_probability": 1000,
+        "constrained_counting": 1000,
+        "modular_system": 1000
+      },
+      "unique_prompts": 3000,
+      "duplicate_prompt_rows": 0,
+      "unique_instances": 3000,
+      "duplicate_instance_rows": 0,
+      "tool_gold_verified": 3000
+    },
+    "validation": {
+      "rows": 300,
+      "families": {
+        "conditional_probability": 100,
+        "constrained_counting": 100,
+        "modular_system": 100
+      },
+      "unique_prompts": 300,
+      "duplicate_prompt_rows": 0,
+      "unique_instances": 300,
+      "duplicate_instance_rows": 0,
+      "tool_gold_verified": 300
+    },
+    "test": {
+      "rows": 300,
+      "families": {
+        "conditional_probability": 100,
+        "constrained_counting": 100,
+        "modular_system": 100
+      },
+      "unique_prompts": 300,
+      "duplicate_prompt_rows": 0,
+      "unique_instances": 300,
+      "duplicate_instance_rows": 0,
+      "tool_gold_verified": 300
+    }
+  },
+  "cross_split_prompt_overlap": {
+    "train_validation": 0,
+    "train_test": 0,
+    "validation_test": 0
+  },
+  "cross_split_instance_overlap": {
+    "train_validation": 0,
+    "train_test": 0,
+    "validation_test": 0
+  },
+  "failures": []
+}

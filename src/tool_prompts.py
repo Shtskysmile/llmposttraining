@@ -2,11 +2,11 @@
 
 
 TOOL_SYSTEM = (
-    "Please integrate natural language reasoning with programs to solve the problem above, and put your "
-    "final answer within \\boxed{}. You may call the Python calculator using a fenced ```python code block. "
-    "The calculator permits arithmetic, combinations, permutations, product, comb, gcd, and lcm from "
-    "Python builtins, itertools, and math; do not use sympy. After the tool returns, use its result and "
-    "provide the exact final value in <answer>...</answer>."
+    "Please integrate natural-language reasoning with Python programs to solve the problem, and put the "
+    "final answer within \\boxed{}. To call the calculator, use a fenced ```python code block. It permits "
+    "arithmetic, combinations, permutations, product, comb, gcd, lcm, and selected math functions; do not "
+    "use sympy. After the tool returns, use its result and provide the exact final value in "
+    "<answer>...</answer> and \\boxed{}."
 )
 
 
@@ -28,8 +28,8 @@ def tool_messages(prompt: str, few_shot: bool = True):
             messages.extend([
                 {"role": "user", "content": question},
                 {"role": "assistant", "content": code},
-                {"role": "user", "content": f"Tool result (success=True):\n{result}\nGive the exact result in <answer>...</answer>."},
-                {"role": "assistant", "content": f"<answer>{result}</answer>"},
+                {"role": "user", "content": f"Tool result (success=True):\n{result}\nGive the exact result in <answer>...</answer> and \\boxed{{}}."},
+                {"role": "assistant", "content": f"<answer>{result}</answer> \\boxed{{{result}}}"},
             ])
-    messages.append({"role": "user", "content": prompt + "\nPut the exact final value in <answer>...</answer>."})
+    messages.append({"role": "user", "content": prompt + "\nPut the exact final value in <answer>...</answer> and \\boxed{}."})
     return messages

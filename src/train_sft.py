@@ -2,6 +2,7 @@
 """Small response-only LoRA SFT warmup for the answer-tag format."""
 import argparse
 import ast
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -177,6 +178,7 @@ def main():
 
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
+    supervised_tokens = sum(sum(label != -100 for label in row["labels"]) for row in examples)
     train_args = TrainingArguments(
         output_dir=str(output), num_train_epochs=args.epochs,
         per_device_train_batch_size=args.batch_size,
@@ -193,6 +195,8 @@ def main():
     (output / "run_config.json").write_text(json.dumps({
         "model": model_id, "revision": revision, "seed": seed,
         "dataset": args.data, "dataset_rows": len(examples),
+        "dataset_sha256": hashlib.sha256(Path(args.data).read_bytes()).hexdigest(),
+        "supervised_assistant_tokens": supervised_tokens,
         "epochs": args.epochs, "batch_size": args.batch_size,
         "learning_rate": args.learning_rate, "max_sequence_length": max_length,
         "target_mode": args.target_mode,

@@ -114,10 +114,18 @@ def token_logprobs(model, context_ids, completion_ids, device, adapter_name,
     start = prefix.numel() - 1
     logits = output.logits[0, start:start + completion.numel()]
     scores = transform_sampling_logits(logits, temperature, top_k, top_p).float()
-    return scores.log_softmax(dim=-1).gather(1, completion.unsqueeze(1)).squeeze(1)
+    if torch.isnan(scores).any() or torch.isposinf(scores).any():
+        raise FloatingPointError(f"non-finite {adapter_name} sampling logits")
+    log_probs = scores.log_softmax(dim=-1)
+    if torch.isnan(log_probs).any():
+        raise FloatingPointError(f"non-finite {adapter_name} token log probabilities")
+    # A sampled token can leave top-k/top-p support after an update. Keep its
+    # training log-probability finite instead of passing -inf into the KL term.
+    return log_probs.gather(1, completion.unsqueeze(1)).squeeze(1).clamp_min(-30.0)
 
 
-def trajectory_objective(model, trajectory, device, beta, temperature, top_k, top_p):
+def trajectory_objective(model, trajectory, device, beta, temperature, top_k, top_p,
+                         kl_log_ratio_clip):
     policy_logps, kl_values = [], []
     for turn in trajectory["turns"]:
         policy = token_logprobs(model, turn["context_ids"], turn["completion_ids"], device,
@@ -128,7 +136,7 @@ def trajectory_objective(model, trajectory, device, beta, temperature, top_k, to
                 reference = token_logprobs(model, turn["context_ids"], turn["completion_ids"], device,
                                            "reference", temperature, top_k, top_p)
             # Nonnegative sampled estimate of KL(pi || pi_ref), as used in GRPO.
-            log_ratio = reference - policy
+            log_ratio = (reference - policy).clamp(-kl_log_ratio_clip, kl_log_ratio_clip)
             kl_values.append(torch.exp(log_ratio) - log_ratio - 1.0)
     # PEFT's set_adapter toggles requires_grad on adapter weights. Restore the
     # policy before backward so both its log-probability and KL gradients flow.
@@ -155,11 +163,15 @@ def main():
     parser.add_argument("--groups-per-step", type=int, default=1)
     parser.add_argument("--max-attempt-groups", type=int, default=8,
                         help="dynamic sampler's total group attempts per optimizer update")
+    parser.add_argument("--rollout-token-budget", type=int, default=0,
+                        help="stop after this many sampled assistant tokens (group overshoot is at most one group)")
     parser.add_argument("--max-new-tokens", type=int, default=384)
     parser.add_argument("--max-total-tokens", type=int, default=768)
     parser.add_argument("--max-tool-calls", type=int, default=2)
     parser.add_argument("--learning-rate", type=float, default=1e-6)
     parser.add_argument("--beta", type=float, default=0.02, help="KL penalty against the initial SFT adapter")
+    parser.add_argument("--kl-log-ratio-clip", type=float, default=5.0,
+                        help="symmetric clip for sampled KL log-ratios to avoid exponential overflow")
     parser.add_argument("--temperature", type=float, default=0.7)
     parser.add_argument("--top-k", type=int, default=50)
     parser.add_argument("--top-p", type=float, default=0.95)
@@ -171,10 +183,14 @@ def main():
         raise SystemExit("Tool GRPO requires exactly one visible CUDA GPU.")
     if args.num_generations < 2 or args.groups_per_step < 1 or args.steps < 1:
         raise SystemExit("num-generations must be >= 2; groups-per-step and steps must be >= 1")
+    if args.rollout_token_budget < 0:
+        raise SystemExit("rollout-token-budget must be nonnegative")
     if args.mode == "dynamic" and args.max_attempt_groups < args.groups_per_step:
         raise SystemExit("max-attempt-groups must be >= groups-per-step")
     if args.temperature <= 0 or args.top_k < 0 or not 0 < args.top_p <= 1:
         raise SystemExit("temperature must be positive, top-k nonnegative, and top-p in (0, 1].")
+    if args.kl_log_ratio_clip <= 0:
+        raise SystemExit("kl-log-ratio-clip must be positive")
 
     random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -214,6 +230,7 @@ def main():
         "sampling_distribution": "temperature/top-k/top-p transformed categorical distribution; logprobs use same warpers",
         "dynamic_acceptance": "retain only groups with nonzero exact-reward variance",
         "tool_output_has_policy_loss": False,
+        "sampled_kl_stabilization": f"clip log(reference/policy) to +/- {args.kl_log_ratio_clip}; token log-probabilities floor at -30",
     }
     (output_dir / "run_config.json").write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
     metrics_path = output_dir / "metrics.jsonl"
@@ -222,7 +239,10 @@ def main():
     generated_tokens_total = discarded_tokens_total = tool_calls_total = 0
     started = time.perf_counter()
 
+    steps_completed = 0
     for step in range(1, args.steps + 1):
+        if args.rollout_token_budget and generated_tokens_total >= args.rollout_token_budget:
+            break
         step_started = time.perf_counter()
         accepted = []
         attempted_prompt_ids = []
@@ -231,7 +251,9 @@ def main():
         target_groups = args.groups_per_step
         attempt_limit = target_groups if args.mode == "fixed" else args.max_attempt_groups
         step_tokens = step_calls = step_successful_calls = step_truncated = 0
-        while len(accepted) < target_groups and step_attempts < attempt_limit:
+        while (len(accepted) < target_groups and step_attempts < attempt_limit and
+               (not args.rollout_token_budget or
+                generated_tokens_total + step_tokens < args.rollout_token_budget)):
             row = random.choice(rows)
             attempted_prompt_ids.append(row.get("id"))
             group = [sample_episode(
@@ -280,16 +302,21 @@ def main():
             for _, group, rewards, advantages in accepted:
                 for episode, reward, advantage in zip(group, rewards, advantages):
                     mean_logp, mean_kl = trajectory_objective(
-                        model, episode, device, args.beta, args.temperature, args.top_k, args.top_p)
+                        model, episode, device, args.beta, args.temperature, args.top_k, args.top_p,
+                        args.kl_log_ratio_clip)
                     if mean_logp is None:
                         continue
+                    if not torch.isfinite(mean_logp).all() or not torch.isfinite(mean_kl).all():
+                        raise FloatingPointError(f"non-finite policy objective before backward at step {step}")
                     pg_loss = -float(advantage) * mean_logp
                     loss = (pg_loss + args.beta * mean_kl) / trajectory_count
+                    if not torch.isfinite(loss).all():
+                        raise FloatingPointError(f"non-finite loss before backward at step {step}")
                     loss.backward()
                     step_loss += float(loss.detach())
                     step_pg += float(pg_loss.detach()) / trajectory_count
                     step_kl += float(mean_kl.detach()) / trajectory_count
-            step_grad_norm = float(torch.nn.utils.clip_grad_norm_(trainable, 1.0))
+            step_grad_norm = float(torch.nn.utils.clip_grad_norm_(trainable, 1.0, error_if_nonfinite=True))
             optimizer.step()
             optimizer_updates += 1
             optimizer_step_applied = True
@@ -317,16 +344,23 @@ def main():
         with metrics_path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(row, ensure_ascii=False) + "\n")
         print(json.dumps(row, ensure_ascii=False), flush=True)
+        steps_completed += 1
+        if args.rollout_token_budget and generated_tokens_total >= args.rollout_token_budget:
+            break
 
     model.set_adapter("default")
     model.save_pretrained(output_dir)
     tokenizer.save_pretrained(output_dir)
     summary = {
-        "steps": args.steps, "mode": args.mode, "accepted_groups": accepted_total,
+        "steps": steps_completed, "configured_max_steps": args.steps,
+        "mode": args.mode, "accepted_groups": accepted_total,
         "optimizer_updates": optimizer_updates,
         "attempted_groups": attempted_total, "discarded_zero_variance_groups": discarded_total,
         "discard_rate": discarded_total / max(1, attempted_total),
         "generated_tokens_including_discarded": generated_tokens_total,
+        "rollout_token_budget": args.rollout_token_budget or None,
+        "rollout_budget_overshoot_tokens": (max(0, generated_tokens_total - args.rollout_token_budget)
+                                             if args.rollout_token_budget else 0),
         "discarded_generated_tokens": discarded_tokens_total,
         "tool_calls": tool_calls_total,
         "elapsed_seconds": time.perf_counter() - started,

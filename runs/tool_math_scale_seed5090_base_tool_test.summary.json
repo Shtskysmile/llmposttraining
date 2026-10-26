@@ -1,0 +1,16 @@
+{
+  "model": "/root/.cache/modelscope/Qwen2.5-Math-7B-Instruct",
+  "base_model": null,
+  "revision": null,
+  "data": "data/tool_math_scale_seed5090/test.jsonl",
+  "mode": "tool",
+  "n": 300,
+  "accuracy": 0.5533333333333333,
+  "format_error_rate": 0.8566666666666667,
+  "mean_generated_tokens": 108.98,
+  "mean_tool_calls": 0.7066666666666667,
+  "tool_execution_success_rate": 0.7783018867924528,
+  "truncated_rate": 0.07666666666666666,
+  "elapsed_seconds": 739.308768506,
+  "peak_vram_gib": 14.384322166442871
+}

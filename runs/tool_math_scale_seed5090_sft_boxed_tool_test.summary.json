@@ -1,0 +1,16 @@
+{
+  "model": "runs/tool_math_sft_qwen25math7b_scale_seed5090_boxed",
+  "base_model": "/root/.cache/modelscope/Qwen2.5-Math-7B-Instruct",
+  "revision": null,
+  "data": "data/tool_math_scale_seed5090/test.jsonl",
+  "mode": "tool",
+  "n": 300,
+  "accuracy": 0.7733333333333333,
+  "format_error_rate": 0.0,
+  "mean_generated_tokens": 63.93333333333333,
+  "mean_tool_calls": 0.7766666666666666,
+  "tool_execution_success_rate": 1.0,
+  "truncated_rate": 0.0,
+  "elapsed_seconds": 883.7168137269982,
+  "peak_vram_gib": 14.555227279663086
+}

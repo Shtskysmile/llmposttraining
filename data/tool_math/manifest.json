@@ -1,0 +1,18 @@
+{
+  "dataset": "tool_math_5090_first_stage",
+  "generator": "data/generate_tool_math.py",
+  "generator_commit": "8287f6287c33e01a7253705f84c46e51fb3b8706",
+  "seed": 5090,
+  "split_sizes": {
+    "train": 300,
+    "validation": 60,
+    "test": 90
+  },
+  "trajectory_builder_commit": "8287f6287c33e01a7253705f84c46e51fb3b8706",
+  "files_sha256": {
+    "train.jsonl": "43995c8b418aeb8be156a59e03825dad95ff5a01212a9fb1c1d7e316c76c9c7b",
+    "validation.jsonl": "1212f63efa27ed094cc0c852fa3b2850962b6f03916a0aa672a8127a48eb3d0f",
+    "test.jsonl": "69879c54baf3fd51deef70d9bed8acf9c24c18c84347b481280a7608c6562f50",
+    "train_trajectories.jsonl": "3d7768acf765f8fa4bfc0861c04190c70053157e57bb28a7f2501da7faa35361"
+  }
+}

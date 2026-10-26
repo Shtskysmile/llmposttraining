@@ -1,0 +1,18 @@
+{
+  "baseline": "runs/math500_base_tool_level100_seed5090.jsonl",
+  "candidate": "runs/math500_sft_tool_level100_seed5090.jsonl",
+  "n": 100,
+  "baseline_accuracy": 0.6,
+  "candidate_accuracy": 0.54,
+  "paired_accuracy_difference": -0.06,
+  "bootstrap_95_percentile_ci": [
+    -0.15,
+    0.02
+  ],
+  "bootstrap_samples": 10000,
+  "bootstrap_seed": 5090,
+  "baseline_only_correct": 13,
+  "candidate_only_correct": 7,
+  "exact_mcnemar_two_sided_p": 0.26317596435546875,
+  "interpretation_scope": "question-sampling uncertainty only; excludes training-seed variation"
+}
