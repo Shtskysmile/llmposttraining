@@ -52,6 +52,7 @@ def main():
     parser.add_argument("--max-tool-calls", type=int, default=2,
                         help="per sampled answer")
     parser.add_argument("--temperature", type=float, default=0.7)
+    parser.add_argument("--top-k", type=int, default=50)
     parser.add_argument("--top-p", type=float, default=0.95)
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--seed", type=int, default=5090)
@@ -65,8 +66,8 @@ def main():
         parser.error("max-total-tokens must be at least num-samples")
     if args.max_new_tokens < 1 or args.max_tool_calls < 0:
         parser.error("token limit must be positive and tool-call limit nonnegative")
-    if args.temperature <= 0 or not 0 < args.top_p <= 1:
-        parser.error("temperature must be positive and top-p must be in (0, 1]")
+    if args.temperature <= 0 or args.top_k < 0 or not 0 < args.top_p <= 1:
+        parser.error("temperature must be positive, top-k nonnegative, and top-p in (0, 1]")
     if not torch.cuda.is_available():
         raise SystemExit("CUDA is unavailable; sampling evaluation requires a GPU.")
 
@@ -97,7 +98,7 @@ def main():
     run_config |= {
         "n": len(rows), "data_sha256": hashlib.sha256(raw_data).hexdigest(),
         "data_manifest": data_manifest,
-        "sampling": "temperature/top-p categorical sampling",
+        "sampling": "temperature/top-k/top-p categorical sampling",
         "per_sample_token_budgets": per_sample_budgets,
         "seed_strategy": "base seed plus source row index, reset before each question",
         "majority_vote_rule": "require one exact answer with strictly more than half of all samples",
@@ -173,7 +174,8 @@ def main():
                 samples.append(generate_one(
                     model, tokenizer, row["prompt"], args.mode,
                     min(args.max_new_tokens, budget), args.max_tool_calls, budget,
-                    do_sample=True, temperature=args.temperature, top_p=args.top_p))
+                    do_sample=True, temperature=args.temperature, top_p=args.top_p,
+                    top_k=args.top_k))
             completions = [sample["completion"] for sample in samples]
             correct = [int(score(completion, row["answer"])) for completion in completions]
             parseable_count = sum(vote_key(completion) is not None for completion in completions)
@@ -206,6 +208,8 @@ def main():
     total_calls = sum(row["tool_calls"] for row in records)
     summary = {
         "model": args.model, "adapter": args.adapter, "revision": args.revision,
+        "seed": args.seed, "temperature": args.temperature,
+        "top_k": args.top_k, "top_p": args.top_p,
         "data": args.data, "data_sha256": hashlib.sha256(raw_data).hexdigest(),
         "data_manifest": data_manifest,
         "mode": args.mode, "n": len(records), "num_samples": args.num_samples,

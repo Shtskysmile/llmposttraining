@@ -21,7 +21,7 @@ def load_rows(path):
 
 
 def generate_one(model, tokenizer, prompt, mode, max_new_tokens, max_tool_calls, max_total_tokens,
-                 do_sample=False, temperature=0.7, top_p=0.95):
+                 do_sample=False, temperature=0.7, top_p=0.95, top_k=50):
     prompt = prompt + "\nPut the exact final value in <answer>...</answer>."
     if mode == "tool":
         messages = tool_messages(prompt[:-len("\nPut the exact final value in <answer>...</answer>.")])
@@ -50,7 +50,7 @@ def generate_one(model, tokenizer, prompt, mode, max_new_tokens, max_tool_calls,
             generation = {"do_sample": do_sample, "max_new_tokens": turn_budget,
                           "pad_token_id": tokenizer.eos_token_id}
             if do_sample:
-                generation.update(temperature=temperature, top_p=top_p)
+                generation.update(temperature=temperature, top_p=top_p, top_k=top_k)
             out = model.generate(**encoded, **generation)
         generated = out[0, input_len:]
         text = tokenizer.decode(generated, skip_special_tokens=True)
