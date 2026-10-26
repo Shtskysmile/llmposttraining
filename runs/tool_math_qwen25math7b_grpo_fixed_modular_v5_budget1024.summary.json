@@ -1,0 +1,16 @@
+{
+  "model": "runs/tool_math_grpo_fixed_modular_seed5090_v5",
+  "base_model": "/root/.cache/modelscope/Qwen2.5-Math-7B-Instruct",
+  "revision": null,
+  "data": "data/tool_math/test.jsonl",
+  "mode": "tool",
+  "n": 9,
+  "accuracy": 0.6666666666666666,
+  "format_error_rate": 0.0,
+  "mean_generated_tokens": 53.666666666666664,
+  "mean_tool_calls": 0.7777777777777778,
+  "tool_execution_success_rate": 0.8571428571428571,
+  "truncated_rate": 0.0,
+  "elapsed_seconds": 22.12183149000157,
+  "peak_vram_gib": 14.541484355926514
+}

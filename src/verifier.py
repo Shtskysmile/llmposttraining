@@ -2,15 +2,23 @@
 from fractions import Fraction
 import re
 
-ANSWER_RE = re.compile(r"<answer>\s*([^<>\n]+?)\s*</answer>", re.IGNORECASE)
-BOXED_RE = re.compile(r"\\boxed\s*\{\s*([^{}]+?)\s*\}")
+ANSWER_RE = re.compile(r"<answer>\s*([^<>\n]+?)\s*</\s*answer\s*>", re.IGNORECASE)
+STRICT_ANSWER_RE = re.compile(r"<answer>\s*([^<>\n]+?)\s*</answer>", re.IGNORECASE)
+BOXED_START_RE = re.compile(r"\\boxed\s*\{")
 NUM_RE = re.compile(r"^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:/[+-]?\d+)?$")
 DEC = r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)"
 EQUATION_RE = re.compile(rf"^\s*({DEC})\s*([+*×x÷/\-])\s*({DEC})\s*=\s*({DEC})\s*$")
+LATEX_FRAC_RE = re.compile(r"^\\(?:dfrac|tfrac|frac)\s*\{\s*([^{}]+?)\s*\}\s*\{\s*([^{}]+?)\s*\}$")
 
 
 def _number(token: str):
-    token = token.strip().replace(",", "")
+    token = token.strip().replace(",", "").replace("$", "")
+    fraction = LATEX_FRAC_RE.fullmatch(token)
+    if fraction:
+        numerator, denominator = (_number(part) for part in fraction.groups())
+        if numerator is None or denominator is None or denominator == 0:
+            return None
+        return numerator / denominator
     if not NUM_RE.fullmatch(token):
         return None
     try:
@@ -19,13 +27,30 @@ def _number(token: str):
         return None
 
 
+def _boxed_values(text: str):
+    """Extract balanced contents of one or more \boxed{...} expressions."""
+    values = []
+    for match in BOXED_START_RE.finditer(text):
+        start = match.end()
+        depth = 1
+        for index in range(start, len(text)):
+            if text[index] == "{":
+                depth += 1
+            elif text[index] == "}":
+                depth -= 1
+                if depth == 0:
+                    values.append(text[start:index].strip())
+                    break
+    return values
+
+
 def extract_answer(text: str):
     matches = ANSWER_RE.findall(text)
     if matches:
         # A malformed or repeated answer tag is never rescued by nearby prose.
         return _number(matches[0]) if len(matches) == 1 else None
 
-    boxed = BOXED_RE.findall(text)
+    boxed = _boxed_values(text)
     if boxed:
         return _number(boxed[0]) if len(boxed) == 1 else None
 
@@ -73,5 +98,5 @@ def score(completion: str, gold: str) -> float:
 
 
 def format_error(completion: str) -> bool:
-    matches = ANSWER_RE.findall(completion)
+    matches = STRICT_ANSWER_RE.findall(completion)
     return len(matches) != 1 or _number(matches[0]) is None

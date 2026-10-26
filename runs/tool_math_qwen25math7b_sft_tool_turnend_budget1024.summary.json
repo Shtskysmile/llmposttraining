@@ -1,0 +1,16 @@
+{
+  "model": "runs/tool_math_sft_qwen25math7b_seed5090_turnend",
+  "base_model": "/root/.cache/modelscope/Qwen2.5-Math-7B-Instruct",
+  "revision": null,
+  "data": "data/tool_math/test.jsonl",
+  "mode": "tool",
+  "n": 9,
+  "accuracy": 0.5555555555555556,
+  "format_error_rate": 0.0,
+  "mean_generated_tokens": 52.77777777777778,
+  "mean_tool_calls": 0.7777777777777778,
+  "tool_execution_success_rate": 0.7142857142857143,
+  "truncated_rate": 0.0,
+  "elapsed_seconds": 22.251297038001212,
+  "peak_vram_gib": 14.541484355926514
+}

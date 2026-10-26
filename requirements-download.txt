@@ -1,0 +1,3 @@
+# Optional ModelScope mirror downloader; separate from the training environment.
+modelscope==1.40.2
+modelscope-hub==0.5.1

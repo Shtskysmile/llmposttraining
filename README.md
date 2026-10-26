@@ -1,12 +1,19 @@
 # Tiny GRPO / RLVR arithmetic experiment
 
+The RTX 5090 tool-math project adds exact-answer datasets, an isolated Python
+tool, replayable multi-turn traces, rollout A/B evaluation, QLoRA tool-trace
+SFT, and a new multi-turn group-relative GRPO pilot. Methods, run commands,
+measured results, and limitations are documented in
+[docs/工具数学实验.md](docs/工具数学实验.md). This is separate from the legacy
+Qwen3 1.7B single-turn GRPO runs below.
+
 Small, reproducible interview project for post-training: train a Qwen3 policy with TRL GRPO and LoRA using only exact, programmatically checked integer answers. It deliberately targets a short single-GPU experiment, not a benchmark claim.
 
 For a detailed Chinese walkthrough of the datasets, verifier, and training stages, see [docs/实验流程说明.md](docs/实验流程说明.md). A compact report with hyperparameters, GPU memory, and accuracy across variants is in [docs/实验结果汇总报告.md](docs/实验结果汇总报告.md); detailed run notes and artifacts are in [RESULTS.md](RESULTS.md).
 
-## Host snapshot and constraints
+## Historical host snapshot for the original Qwen3 runs
 
-Checked 2026-10-23 as root: NVIDIA A100-SXM4-40GB, driver 595.84 (reports CUDA 13.2), 16 CPU cores / about 47 GiB RAM, 196 GiB filesystem with about 157 GiB free. The host Conda Python is 3.14.7 and has none of the ML packages installed. The default sandbox hides GPU devices; run training from the host shell or in an approved host-permission context. The user supplied A30 specs, but the live host reports A100; scripts use one visible GPU and do not hard-code a model-specific device.
+The original Qwen3 single-turn runs recorded an NVIDIA A100-SXM4-40GB on 2026-10-23. Those hardware and result notes below are historical. The new tool-math experiments use the RTX 5090 described in the project plan; their measured 5090 memory and timing are reported separately in the Chinese stage report.
 
 ## Data and verifier
 

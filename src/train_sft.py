@@ -85,7 +85,11 @@ def main():
     p.add_argument("--epochs", type=float, default=1.0)
     p.add_argument("--batch-size", type=int, default=4)
     p.add_argument("--learning-rate", type=float, default=1e-4)
-    p.add_argument("--target-mode", choices=("final", "trace"), default="final")
+    p.add_argument("--target-mode", choices=("final", "trace", "tool_trace"), default="final")
+    p.add_argument("--model", default=None, help="override the model identifier from config.json")
+    p.add_argument("--revision", default=None, help="pin a model revision")
+    p.add_argument("--load-in-4bit", action="store_true", help="QLoRA with NF4 and BF16 compute")
+    p.add_argument("--gradient-checkpointing", action="store_true")
     p.add_argument("--seed", type=int, default=None)
     args = p.parse_args()
 
@@ -96,36 +100,73 @@ def main():
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
-    model_id, revision = cfg["model"], cfg["revision"]
+    model_id = args.model or cfg["model"]
+    revision = args.revision or (None if Path(model_id).exists() else cfg["revision"])
     tokenizer = AutoTokenizer.from_pretrained(model_id, revision=revision)
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "right"
 
     rows = read_jsonl(args.data)
+    def encode_chat(messages):
+        # Qwen3's template accepts enable_thinking; Qwen2.5-Math's does not.
+        try:
+            return tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=False,
+                                                 enable_thinking=False)
+        except TypeError:
+            return tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=False)
+
+    def encode_prefix(messages):
+        try:
+            return tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=True,
+                                                 enable_thinking=False)
+        except TypeError:
+            return tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=True)
+
     examples = []
+    max_length = 2048 if args.target_mode == "tool_trace" else 384
     for row in rows:
-        user = {"role": "user", "content": row["prompt"]}
-        target = (f"<answer>{row['answer']}</answer>" if args.target_mode == "final"
-                  else arithmetic_trace(row["prompt"], row["answer"]))
-        assistant = {"role": "assistant", "content": target}
-        prompt_ids = tokenizer.apply_chat_template(
-            [user], tokenize=True, add_generation_prompt=True,
-            enable_thinking=False)
-        full_ids = tokenizer.apply_chat_template(
-            [user, assistant], tokenize=True, add_generation_prompt=False,
-            enable_thinking=False)
-        if full_ids[:len(prompt_ids)] != prompt_ids:
-            raise RuntimeError("Qwen chat template did not preserve the prompt prefix.")
-        if len(full_ids) > 384:
-            raise RuntimeError(f"SFT example exceeds 384 tokens ({len(full_ids)}).")
-        labels = [-100] * len(prompt_ids) + full_ids[len(prompt_ids):]
+        if args.target_mode == "tool_trace":
+            messages = row["messages"]
+            full_ids = encode_chat(messages)
+            labels = [-100] * len(full_ids)
+            for message_idx, message in enumerate(messages):
+                if message["role"] == "assistant":
+                    start_ids = encode_prefix(messages[:message_idx])
+                    end_ids = encode_chat(messages[:message_idx + 1])
+                    if end_ids[:len(start_ids)] != start_ids or full_ids[:len(end_ids)] != end_ids:
+                        raise RuntimeError("Chat template does not preserve assistant-turn token boundaries.")
+                    labels[len(start_ids):len(end_ids)] = full_ids[len(start_ids):len(end_ids)]
+        else:
+            user = {"role": "user", "content": row["prompt"]}
+            target = (f"<answer>{row['answer']}</answer>" if args.target_mode == "final"
+                      else arithmetic_trace(row["prompt"], row["answer"]))
+            messages = [user, {"role": "assistant", "content": target}]
+            full_ids = encode_chat(messages)
+            prompt_ids = encode_prefix([user])
+            if full_ids[:len(prompt_ids)] != prompt_ids:
+                raise RuntimeError("Qwen chat template did not preserve the prompt prefix.")
+            labels = [-100] * len(prompt_ids) + full_ids[len(prompt_ids):]
+        if len(full_ids) > max_length:
+            raise RuntimeError(f"SFT example exceeds {max_length} tokens ({len(full_ids)}).")
+        if all(label == -100 for label in labels):
+            raise RuntimeError("SFT example has no assistant tokens to supervise.")
         examples.append({"input_ids": full_ids, "labels": labels})
 
-    model = AutoModelForCausalLM.from_pretrained(
-        model_id, revision=revision, torch_dtype=torch.bfloat16,
-        attn_implementation="sdpa")
+    load_kwargs = {"revision": revision, "torch_dtype": torch.bfloat16, "attn_implementation": "sdpa"}
+    if args.load_in_4bit:
+        from transformers import BitsAndBytesConfig
+        load_kwargs["quantization_config"] = BitsAndBytesConfig(
+            load_in_4bit=True, bnb_4bit_quant_type="nf4", bnb_4bit_use_double_quant=True,
+            bnb_4bit_compute_dtype=torch.bfloat16)
+        load_kwargs["device_map"] = {"": 0}
+    model = AutoModelForCausalLM.from_pretrained(model_id, **load_kwargs)
     model.config.use_cache = False
+    if args.load_in_4bit:
+        from peft import prepare_model_for_kbit_training
+        model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=args.gradient_checkpointing)
+    elif args.gradient_checkpointing:
+        model.gradient_checkpointing_enable()
     peft_config = LoraConfig(
         r=cfg["lora_r"], lora_alpha=cfg["lora_alpha"],
         lora_dropout=cfg["lora_dropout"],
@@ -142,7 +183,7 @@ def main():
         gradient_accumulation_steps=1, learning_rate=args.learning_rate,
         lr_scheduler_type="linear", warmup_ratio=0.05,
         logging_steps=1, save_strategy="no", report_to="none",
-        seed=seed, bf16=True, gradient_checkpointing=False,
+        seed=seed, bf16=True, gradient_checkpointing=args.gradient_checkpointing,
         max_grad_norm=1.0, weight_decay=0.0,
         dataloader_num_workers=0, remove_unused_columns=False)
     trainer = Trainer(
@@ -153,14 +194,21 @@ def main():
         "model": model_id, "revision": revision, "seed": seed,
         "dataset": args.data, "dataset_rows": len(examples),
         "epochs": args.epochs, "batch_size": args.batch_size,
-        "learning_rate": args.learning_rate, "max_sequence_length": 384,
+        "learning_rate": args.learning_rate, "max_sequence_length": max_length,
         "target_mode": args.target_mode,
-        "objective": "response-only SFT on verified arithmetic traces and final answer tag"
-        if args.target_mode == "trace" else "response-only SFT on <answer>integer</answer>",
+        "assistant_end_of_turn_supervised": args.target_mode == "tool_trace",
+        "quantization": "4bit_nf4_double_quant_bf16_compute" if args.load_in_4bit else "bf16",
+        "gradient_checkpointing": args.gradient_checkpointing,
+        "objective": ("assistant-turn-only SFT on verified multi-turn Python tool trajectories"
+                      if args.target_mode == "tool_trace" else
+                      "response-only SFT on verified arithmetic traces and final answer tag"
+                      if args.target_mode == "trace" else
+                      "response-only SFT on <answer>integer</answer>"),
         "precision": "bf16", "adapter": "LoRA",
     }, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"model": model_id, "rows": len(examples),
                       "epochs": args.epochs, "batch_size": args.batch_size,
+                      "target_mode": args.target_mode,
                       "gpu": torch.cuda.get_device_name(0),
                       "vram_free_gib": round(torch.cuda.mem_get_info()[0] / 2**30, 2)},
                      indent=2))

@@ -1,0 +1,14 @@
+{
+  "steps": 5,
+  "mode": "fixed",
+  "accepted_groups": 5,
+  "optimizer_updates": 5,
+  "attempted_groups": 5,
+  "discarded_zero_variance_groups": 0,
+  "discard_rate": 0.0,
+  "generated_tokens_including_discarded": 355,
+  "discarded_generated_tokens": 0,
+  "tool_calls": 4,
+  "elapsed_seconds": 49.475756163999904,
+  "peak_vram_gib": 21.625364303588867
+}
