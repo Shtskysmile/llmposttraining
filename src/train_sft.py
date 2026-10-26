@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Small response-only LoRA SFT warmup for the answer-tag format."""
+"""LoRA SFT for answer tags, verified traces, preserved reasoning, and tool turns."""
 import argparse
 import ast
 import hashlib
@@ -84,15 +84,23 @@ def main():
     p.add_argument("--data", default="data/train.jsonl")
     p.add_argument("--output", default="runs/sft_format_seed17")
     p.add_argument("--epochs", type=float, default=1.0)
+    p.add_argument("--max-steps", type=int, default=-1,
+                   help="optional fixed optimizer-update budget; overrides epochs when positive")
     p.add_argument("--batch-size", type=int, default=4)
     p.add_argument("--learning-rate", type=float, default=1e-4)
-    p.add_argument("--target-mode", choices=("final", "trace", "tool_trace"), default="final")
+    p.add_argument("--target-mode", choices=("final", "trace", "preserved", "tool_trace"), default="final")
+    p.add_argument("--save-steps", type=int, default=0,
+                   help="save intermediate Trainer checkpoints at this step interval; 0 disables")
     p.add_argument("--model", default=None, help="override the model identifier from config.json")
     p.add_argument("--revision", default=None, help="pin a model revision")
     p.add_argument("--load-in-4bit", action="store_true", help="QLoRA with NF4 and BF16 compute")
     p.add_argument("--gradient-checkpointing", action="store_true")
     p.add_argument("--seed", type=int, default=None)
     args = p.parse_args()
+    if args.save_steps < 0:
+        p.error("save-steps must be nonnegative")
+    if args.max_steps == 0 or args.max_steps < -1:
+        p.error("max-steps must be -1 (disabled) or a positive update count")
 
     cfg = json.loads(Path(args.config).read_text())
     seed = cfg["seed"] if args.seed is None else args.seed
@@ -140,8 +148,12 @@ def main():
                     labels[len(start_ids):len(end_ids)] = full_ids[len(start_ids):len(end_ids)]
         else:
             user = {"role": "user", "content": row["prompt"]}
-            target = (f"<answer>{row['answer']}</answer>" if args.target_mode == "final"
-                      else arithmetic_trace(row["prompt"], row["answer"]))
+            if args.target_mode == "final":
+                target = f"<answer>{row['answer']}</answer>"
+            elif args.target_mode == "trace":
+                target = arithmetic_trace(row["prompt"], row["answer"])
+            else:
+                target = row["target"]
             messages = [user, {"role": "assistant", "content": target}]
             full_ids = encode_chat(messages)
             prompt_ids = encode_prefix([user])
@@ -181,10 +193,12 @@ def main():
     supervised_tokens = sum(sum(label != -100 for label in row["labels"]) for row in examples)
     train_args = TrainingArguments(
         output_dir=str(output), num_train_epochs=args.epochs,
+        max_steps=args.max_steps,
         per_device_train_batch_size=args.batch_size,
         gradient_accumulation_steps=1, learning_rate=args.learning_rate,
         lr_scheduler_type="linear", warmup_ratio=0.05,
-        logging_steps=1, save_strategy="no", report_to="none",
+        logging_steps=1, save_strategy="steps" if args.save_steps else "no",
+        save_steps=args.save_steps or 500000, save_total_limit=20, report_to="none",
         seed=seed, bf16=True, gradient_checkpointing=args.gradient_checkpointing,
         max_grad_norm=1.0, weight_decay=0.0,
         dataloader_num_workers=0, remove_unused_columns=False)
@@ -198,7 +212,9 @@ def main():
         "dataset_sha256": hashlib.sha256(Path(args.data).read_bytes()).hexdigest(),
         "supervised_assistant_tokens": supervised_tokens,
         "epochs": args.epochs, "batch_size": args.batch_size,
+        "max_steps": args.max_steps,
         "learning_rate": args.learning_rate, "max_sequence_length": max_length,
+        "save_steps": args.save_steps,
         "target_mode": args.target_mode,
         "assistant_end_of_turn_supervised": args.target_mode == "tool_trace",
         "quantization": "4bit_nf4_double_quant_bf16_compute" if args.load_in_4bit else "bf16",
@@ -207,6 +223,8 @@ def main():
                       if args.target_mode == "tool_trace" else
                       "response-only SFT on verified arithmetic traces and final answer tag"
                       if args.target_mode == "trace" else
+                      "response-only SFT on correct base-model reasoning with normalized final answer tag"
+                      if args.target_mode == "preserved" else
                       "response-only SFT on <answer>integer</answer>"),
         "precision": "bf16", "adapter": "LoRA",
     }, indent=2) + "\n", encoding="utf-8")

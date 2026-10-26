@@ -160,6 +160,8 @@ def main():
     parser.add_argument("--max-total-tokens", type=int, default=2048)
     parser.add_argument("--max-tool-calls", type=int, default=2)
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--resume", action="store_true",
+                        help="continue a prefix-complete JSONL run with a matching run-config")
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
     if args.max_turn_tokens < 1 or args.max_total_tokens < 1 or args.max_tool_calls < 0:
@@ -175,6 +177,57 @@ def main():
     if not rows:
         parser.error("evaluation dataset is empty")
 
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    config_path = output.with_suffix(".run_config.json")
+    run_config = {
+        "model": args.model, "adapter": args.adapter, "revision": args.revision,
+        "data": str(data_path), "data_sha256": hashlib.sha256(raw_data).hexdigest(),
+        "n": len(rows), "mode": args.mode, "max_turn_tokens": args.max_turn_tokens,
+        "max_total_tokens": args.max_total_tokens,
+        "max_tool_calls": args.max_tool_calls if args.mode == "tool" else 0,
+        "decoding": "greedy",
+        "manifest": data_manifest,
+    }
+    row_ids = [row["id"] for row in rows]
+    if len(set(row_ids)) != len(row_ids):
+        parser.error("evaluation dataset contains duplicate ids")
+    rows_by_id = {row["id"]: row for row in rows}
+    records = []
+    completed_ids = set()
+    if args.resume:
+        if not output.is_file() or not config_path.is_file():
+            parser.error("resume requires an existing output JSONL and matching .run_config.json")
+        saved_config = json.loads(config_path.read_text(encoding="utf-8"))
+        mismatches = [key for key, value in run_config.items() if saved_config.get(key) != value]
+        if mismatches:
+            parser.error("resume configuration mismatch for: " + ", ".join(mismatches))
+        raw_output = output.read_bytes()
+        if raw_output and not raw_output.endswith(b"\n"):
+            last_newline = raw_output.rfind(b"\n")
+            trailing = raw_output[last_newline + 1:]
+            try:
+                json.loads(trailing)
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                raw_output = raw_output[:last_newline + 1] if last_newline >= 0 else b""
+            else:
+                raw_output += b"\n"
+            output.write_bytes(raw_output)
+        records = [json.loads(line) for line in raw_output.decode("utf-8").splitlines()
+                   if line.strip()]
+        completed_ids = [record.get("id") for record in records]
+        if len(set(completed_ids)) != len(completed_ids):
+            parser.error("resume output contains duplicate ids")
+        if completed_ids != row_ids[:len(completed_ids)]:
+            parser.error("resume output must contain a prefix of dataset ids in original order")
+        for record in records:
+            source = rows_by_id[record["id"]]
+            if record.get("prompt") != source["prompt"] or record.get("answer") != source["answer"]:
+                parser.error("resume output contains a row that differs from the hashed source data")
+        completed_ids = set(completed_ids)
+    else:
+        config_path.write_text(json.dumps(run_config, indent=2) + "\n", encoding="utf-8")
+
     tokenizer = AutoTokenizer.from_pretrained(args.model, revision=args.revision)
     model = AutoModelForCausalLM.from_pretrained(
         args.model, revision=args.revision, torch_dtype=torch.bfloat16,
@@ -183,19 +236,15 @@ def main():
         model = PeftModel.from_pretrained(model, args.adapter)
     model.eval()
 
-    output = Path(args.output)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    records = []
     started = time.perf_counter()
-    gold_parse_failures = []
-    pred_parse_failures = 0
-    with output.open("w", encoding="utf-8") as handle:
+    with output.open("a" if args.resume else "w", encoding="utf-8") as handle:
         for index, row in enumerate(rows):
+            if row["id"] in completed_ids:
+                continue
             prediction = generate(model, tokenizer, row, args.mode, args.max_turn_tokens,
                                   args.max_total_tokens, args.max_tool_calls)
             gold, gold_type = parse_gold(row["answer"])
             if not gold:
-                gold_parse_failures.append(row["id"])
                 correct = False
                 pred_values = []
             else:
@@ -205,23 +254,25 @@ def main():
                     pred_values = parse(prediction["completion"],
                                         extraction_config=PREDICTION_EXTRACTION, parsing_timeout=5)
                 correct = bool(pred_values) and answers_match(gold, pred_values)
-            pred_parse_failures += int(not pred_values)
             boxed = bool(re.search(r"\\boxed\s*\{", prediction["completion"]))
             record = {
                 **row,
                 **prediction,
                 "correct": int(correct),
                 "gold_type": gold_type,
+                "gold_parseable": bool(gold),
                 "prediction_parseable": bool(pred_values),
                 "boxed_answer_present": boxed,
             }
             records.append(record)
             handle.write(json.dumps(record, ensure_ascii=False) + "\n")
             handle.flush()
-            if (index + 1) % 25 == 0:
+            if (len(records)) % 25 == 0:
                 print(f"evaluated {index + 1}/{len(rows)}", flush=True)
 
     elapsed = time.perf_counter() - started
+    gold_parse_failures = [row["id"] for row in records if not row.get("gold_parseable", True)]
+    pred_parse_failures = sum(not row["prediction_parseable"] for row in records)
     tool_calls = sum(row["tool_calls"] for row in records)
     summary = {
         "model": args.model,
@@ -253,6 +304,9 @@ def main():
         "math_verify_version": version("math-verify"),
         "prompt_protocol": "Qwen2.5-Math CoT/TIR boxed-answer prompt; TIR receives the restricted Python tool",
         "max_total_tokens_per_question": args.max_total_tokens,
+        "resumed_from_existing_rows": len(completed_ids),
+        "elapsed_seconds_this_invocation": elapsed,
+        "elapsed_seconds_scope": "current invocation only; prior interrupted attempts are excluded",
     }
     output.with_suffix(".summary.json").write_text(json.dumps(summary, indent=2) + "\n",
                                                    encoding="utf-8")

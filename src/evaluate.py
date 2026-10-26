@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Greedy/pass@k evaluation with answer-format and token-length reporting."""
 import argparse
+import hashlib
 import json
 import statistics
 from pathlib import Path
@@ -46,6 +47,20 @@ def main():
         from peft import PeftModel
         model = PeftModel.from_pretrained(model, args.model)
     rows = read_jsonl(args.data)
+    data_path = Path(args.data)
+    data_sha256 = hashlib.sha256(data_path.read_bytes()).hexdigest()
+    output_path = Path(args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    run_config = {
+        "model": args.model, "base_model": args.base_model, "revision": revision,
+        "data": str(data_path), "data_sha256": data_sha256, "n": len(rows),
+        "samples_per_question": args.samples, "seed": seed,
+        "max_new_tokens": args.max_new_tokens, "batch_size": args.batch_size,
+        "decoding": "greedy" if args.samples == 1 else "temperature=0.7 sampling",
+        "temperature": None if args.samples == 1 else 0.7,
+    }
+    output_path.with_suffix(".run_config.json").write_text(
+        json.dumps(run_config, indent=2) + "\n", encoding="utf-8")
     records, total_tokens, errs, correct1, correctk = [], 0, 0, 0, 0
     group_stds, zero_var_groups, reward_sum = [], 0, 0
     for start in range(0, len(rows), args.batch_size):
@@ -84,8 +99,11 @@ def main():
                "zero_variance_group_rate": zero_var_groups / n,
                "mean_generated_tokens": total_tokens / (n * args.samples),
                "format_error_rate": errs / (n * args.samples)}
-    Path(args.output).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.output).write_text("\n".join(json.dumps(r) for r in records) + "\n", encoding="utf-8")
+    summary |= {"data": str(data_path), "data_sha256": data_sha256,
+                "max_new_tokens": args.max_new_tokens, "batch_size": args.batch_size}
+    output_path.write_text("\n".join(json.dumps(r) for r in records) + "\n", encoding="utf-8")
+    output_path.with_suffix(".summary.json").write_text(
+        json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary, indent=2))
 
 

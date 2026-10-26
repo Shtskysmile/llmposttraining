@@ -6,6 +6,7 @@ trainer. Only generated assistant tokens receive policy gradients; calculator
 outputs are fed back as context and never receive a loss.
 """
 import argparse
+import hashlib
 import json
 import random
 import statistics
@@ -170,6 +171,10 @@ def main():
     parser.add_argument("--max-tool-calls", type=int, default=2)
     parser.add_argument("--learning-rate", type=float, default=1e-6)
     parser.add_argument("--beta", type=float, default=0.02, help="KL penalty against the initial SFT adapter")
+    parser.add_argument("--token-cost-weight", type=float, default=0.0,
+                        help="penalty per generated-token budget fraction")
+    parser.add_argument("--tool-call-cost-weight", type=float, default=0.0,
+                        help="penalty per tool-call budget fraction")
     parser.add_argument("--kl-log-ratio-clip", type=float, default=5.0,
                         help="symmetric clip for sampled KL log-ratios to avoid exponential overflow")
     parser.add_argument("--temperature", type=float, default=0.7)
@@ -185,21 +190,33 @@ def main():
         raise SystemExit("num-generations must be >= 2; groups-per-step and steps must be >= 1")
     if args.rollout_token_budget < 0:
         raise SystemExit("rollout-token-budget must be nonnegative")
+    if args.max_new_tokens < 1 or args.max_total_tokens < 1 or args.max_tool_calls < 0:
+        raise SystemExit("generation limits must be positive and tool-call limit nonnegative")
     if args.mode == "dynamic" and args.max_attempt_groups < args.groups_per_step:
         raise SystemExit("max-attempt-groups must be >= groups-per-step")
     if args.temperature <= 0 or args.top_k < 0 or not 0 < args.top_p <= 1:
         raise SystemExit("temperature must be positive, top-k nonnegative, and top-p in (0, 1].")
     if args.kl_log_ratio_clip <= 0:
         raise SystemExit("kl-log-ratio-clip must be positive")
+    if (args.token_cost_weight < 0 or args.tool_call_cost_weight < 0 or
+            args.token_cost_weight + args.tool_call_cost_weight >= 1):
+        raise SystemExit("cost weights must be nonnegative and sum to less than 1")
 
     random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
+    data_path = Path(args.data)
+    raw_data = data_path.read_bytes()
     rows = read_jsonl(args.data)
     if args.kind:
         rows = [row for row in rows if row.get("kind") == args.kind]
     if not rows:
         raise SystemExit("The selected dataset contains no rows after filtering.")
+    manifest_path = data_path.with_suffix(".manifest.json")
+    if not manifest_path.is_file():
+        manifest_path = data_path.parent / "manifest.json"
+    data_manifest = (json.loads(manifest_path.read_text(encoding="utf-8"))
+                     if manifest_path.is_file() else None)
     tokenizer = AutoTokenizer.from_pretrained(args.model, revision=args.revision)
     quantization = BitsAndBytesConfig(
         load_in_4bit=True, bnb_4bit_quant_type="nf4", bnb_4bit_use_double_quant=True,
@@ -222,13 +239,26 @@ def main():
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
     config = vars(args) | {
-        "dataset_rows": len(rows), "precision": "nf4 base / bf16 compute",
+        "dataset_rows": len(rows),
+        "dataset_sha256": hashlib.sha256(raw_data).hexdigest(),
+        "dataset_manifest": data_manifest,
+        "precision": "nf4 base / bf16 compute",
         "gpu": torch.cuda.get_device_name(0), "torch_version": torch.__version__,
         "transformers_version": transformers.__version__, "peft_version": peft.__version__,
         "policy_objective": "group-relative REINFORCE with sampled KL penalty; no PPO clipping",
         "reference_policy": "frozen copy of the initial tool-trace SFT adapter",
         "sampling_distribution": "temperature/top-k/top-p transformed categorical distribution; logprobs use same warpers",
-        "dynamic_acceptance": "retain only groups with nonzero exact-reward variance",
+        "dynamic_acceptance": "retain only groups with nonzero shaped-reward variance",
+        "reward_definition": (
+            "exact correctness minus token_cost_weight * generated_tokens/max_total_tokens "
+            "minus tool_call_cost_weight * tool_calls/max_tool_calls; ratios capped at 1"
+            if args.token_cost_weight or args.tool_call_cost_weight else "exact final-answer correctness"
+        ),
+        "token_cost_weight": args.token_cost_weight,
+        "tool_call_cost_weight": args.tool_call_cost_weight,
+        "correctness_reward_margin_guarantee": (
+            "correct rewards are at least 1 - sum(cost weights) > 0; incorrect rewards are at most 0"
+        ),
         "tool_output_has_policy_loss": False,
         "sampled_kl_stabilization": f"clip log(reference/policy) to +/- {args.kl_log_ratio_clip}; token log-probabilities floor at -30",
     }
@@ -236,6 +266,7 @@ def main():
     metrics_path = output_dir / "metrics.jsonl"
     rollouts_path = output_dir / "rollouts.jsonl"
     accepted_total = attempted_total = discarded_total = optimizer_updates = 0
+    sampled_trajectory_total = correct_trajectory_total = 0
     generated_tokens_total = discarded_tokens_total = tool_calls_total = 0
     started = time.perf_counter()
 
@@ -248,6 +279,7 @@ def main():
         attempted_prompt_ids = []
         step_attempts = step_discarded = 0
         step_discarded_tokens = 0
+        step_trajectories = step_correct_trajectories = 0
         target_groups = args.groups_per_step
         attempt_limit = target_groups if args.mode == "fixed" else args.max_attempt_groups
         step_tokens = step_calls = step_successful_calls = step_truncated = 0
@@ -260,8 +292,17 @@ def main():
                 model, tokenizer, row, device, args.max_new_tokens, args.max_total_tokens,
                 args.max_tool_calls, args.temperature, args.top_k, args.top_p, not args.no_few_shot)
                 for _ in range(args.num_generations)]
-            rewards = [score(episode["completion"], row["answer"]) for episode in group]
+            correctness = [int(score(episode["completion"], row["answer"])) for episode in group]
+            rewards = []
+            for episode, correct in zip(group, correctness):
+                token_cost = args.token_cost_weight * min(
+                    episode["generated_tokens"] / args.max_total_tokens, 1.0)
+                call_cost = args.tool_call_cost_weight * min(
+                    episode["tool_calls"] / max(1, args.max_tool_calls), 1.0)
+                rewards.append(correct - token_cost - call_cost)
             step_attempts += 1
+            step_trajectories += len(group)
+            step_correct_trajectories += sum(correctness)
             group_tokens = sum(episode["generated_tokens"] for episode in group)
             step_tokens += group_tokens
             step_calls += sum(episode["tool_calls"] for episode in group)
@@ -273,10 +314,11 @@ def main():
                 handle.write(json.dumps({
                     "step": step, "attempt": step_attempts, "accepted": group_accepted,
                     "prompt_id": row.get("id"), "kind": row.get("kind"), "prompt": row["prompt"],
-                    "answer": row["answer"], "rewards": rewards,
-                    "episodes": [{key: episode[key] for key in (
+                    "answer": row["answer"], "correctness": correctness, "rewards": rewards,
+                    "episodes": [{**{key: episode[key] for key in (
                         "completion", "generated_tokens", "tool_calls", "successful_tool_calls",
-                        "tool_events", "truncated")} for episode in group],
+                        "tool_events", "truncated")}, "correct": correct, "reward": reward}
+                        for episode, correct, reward in zip(group, correctness, rewards)],
                 }, ensure_ascii=False) + "\n")
             if not group_accepted:
                 step_discarded += 1
@@ -285,21 +327,23 @@ def main():
             mean_reward = statistics.mean(rewards)
             scale = (sum((reward - mean_reward) ** 2 for reward in rewards) / len(rewards)) ** 0.5
             advantages = [(reward - mean_reward) / max(scale, 1e-6) for reward in rewards]
-            accepted.append((row, group, rewards, advantages))
+            accepted.append((row, group, correctness, rewards, advantages))
 
         attempted_total += step_attempts
+        sampled_trajectory_total += step_trajectories
+        correct_trajectory_total += step_correct_trajectories
         discarded_total += step_discarded
         accepted_total += len(accepted)
         generated_tokens_total += step_tokens
         discarded_tokens_total += step_discarded_tokens
         tool_calls_total += step_calls
         optimizer.zero_grad(set_to_none=True)
-        trajectory_count = sum(len(group) for _, group, _, _ in accepted)
+        trajectory_count = sum(len(group) for _, group, _, _, _ in accepted)
         step_loss = step_pg = step_kl = 0.0
         step_grad_norm = None
         optimizer_step_applied = False
         if trajectory_count:
-            for _, group, rewards, advantages in accepted:
+            for _, group, _, rewards, advantages in accepted:
                 for episode, reward, advantage in zip(group, rewards, advantages):
                     mean_logp, mean_kl = trajectory_objective(
                         model, episode, device, args.beta, args.temperature, args.top_k, args.top_p,
@@ -325,10 +369,14 @@ def main():
             "step": step, "mode": args.mode, "accepted_groups": len(accepted),
             "attempted_groups": step_attempts, "discarded_zero_variance_groups": step_discarded,
             "accepted_mean_reward": statistics.mean(
-                [reward for _, _, rewards, _ in accepted for reward in rewards]) if accepted else None,
-            "accepted_group_rewards": [rewards for _, _, rewards, _ in accepted],
-            "accepted_prompt_ids": [prompt.get("id") for prompt, _, _, _ in accepted],
-            "accepted_task_kinds": [prompt.get("kind") for prompt, _, _, _ in accepted],
+                [reward for _, _, _, rewards, _ in accepted for reward in rewards]) if accepted else None,
+            "accepted_mean_correctness": statistics.mean(
+                [correct for _, _, correctness, _, _ in accepted for correct in correctness]
+            ) if accepted else None,
+            "attempted_answer_accuracy": step_correct_trajectories / max(1, step_trajectories),
+            "accepted_group_rewards": [rewards for _, _, _, rewards, _ in accepted],
+            "accepted_prompt_ids": [prompt.get("id") for prompt, _, _, _, _ in accepted],
+            "accepted_task_kinds": [prompt.get("kind") for prompt, _, _, _, _ in accepted],
             "attempted_prompt_ids": attempted_prompt_ids,
             "optimizer_step_applied": optimizer_step_applied,
             "loss": step_loss, "policy_loss": step_pg, "sampled_kl": step_kl,
@@ -354,8 +402,12 @@ def main():
     summary = {
         "steps": steps_completed, "configured_max_steps": args.steps,
         "mode": args.mode, "accepted_groups": accepted_total,
+        "token_cost_weight": args.token_cost_weight,
+        "tool_call_cost_weight": args.tool_call_cost_weight,
         "optimizer_updates": optimizer_updates,
         "attempted_groups": attempted_total, "discarded_zero_variance_groups": discarded_total,
+        "sampled_trajectories": sampled_trajectory_total,
+        "sampled_answer_accuracy": correct_trajectory_total / max(1, sampled_trajectory_total),
         "discard_rate": discarded_total / max(1, attempted_total),
         "generated_tokens_including_discarded": generated_tokens_total,
         "rollout_token_budget": args.rollout_token_budget or None,

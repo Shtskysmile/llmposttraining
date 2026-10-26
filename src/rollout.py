@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Direct and Python-tool-assisted rollout evaluation for tool-math JSONL."""
 import argparse
+import hashlib
 import json
 import random
 import statistics
@@ -19,7 +20,8 @@ def load_rows(path):
     return [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
-def generate_one(model, tokenizer, prompt, mode, max_new_tokens, max_tool_calls, max_total_tokens):
+def generate_one(model, tokenizer, prompt, mode, max_new_tokens, max_tool_calls, max_total_tokens,
+                 do_sample=False, temperature=0.7, top_p=0.95):
     prompt = prompt + "\nPut the exact final value in <answer>...</answer>."
     if mode == "tool":
         messages = tool_messages(prompt[:-len("\nPut the exact final value in <answer>...</answer>.")])
@@ -45,8 +47,11 @@ def generate_one(model, tokenizer, prompt, mode, max_new_tokens, max_tool_calls,
         input_len = encoded["input_ids"].shape[-1]
         turn_budget = min(max_new_tokens, remaining)
         with torch.inference_mode():
-            out = model.generate(**encoded, do_sample=False, max_new_tokens=turn_budget,
-                                 pad_token_id=tokenizer.eos_token_id)
+            generation = {"do_sample": do_sample, "max_new_tokens": turn_budget,
+                          "pad_token_id": tokenizer.eos_token_id}
+            if do_sample:
+                generation.update(temperature=temperature, top_p=top_p)
+            out = model.generate(**encoded, **generation)
         generated = out[0, input_len:]
         text = tokenizer.decode(generated, skip_special_tokens=True)
         tokens += int(generated.numel())
@@ -97,6 +102,25 @@ def main():
         rows = rows[:args.limit]
     output = Path(args.output or f"runs/tool_math_{args.mode}.jsonl")
     output.parent.mkdir(parents=True, exist_ok=True)
+    data_path = Path(args.data)
+    raw_data = data_path.read_bytes()
+    manifest_path = data_path.with_suffix(".manifest.json")
+    if not manifest_path.is_file():
+        manifest_path = data_path.parent / "manifest.json"
+    data_manifest = (json.loads(manifest_path.read_text(encoding="utf-8"))
+                     if manifest_path.is_file() else None)
+    run_config = {
+        "model": args.model, "base_model": args.base_model, "revision": args.revision,
+        "data": str(data_path), "data_sha256": hashlib.sha256(raw_data).hexdigest(),
+        "data_manifest": data_manifest, "n": len(rows), "mode": args.mode,
+        "decoding": "greedy", "seed": args.seed,
+        "max_new_tokens_per_turn": args.max_new_tokens,
+        "max_total_tokens_per_question": args.max_total_tokens,
+        "max_tool_calls": args.max_tool_calls if args.mode == "tool" else 0,
+        "gpu": torch.cuda.get_device_name(0),
+    }
+    output.with_suffix(".run_config.json").write_text(
+        json.dumps(run_config, indent=2) + "\n", encoding="utf-8")
     records = []
     started = time.perf_counter()
     with output.open("w", encoding="utf-8") as handle:
@@ -114,6 +138,11 @@ def main():
     n = max(1, len(records))
     summary = {"model": args.model, "base_model": args.base_model,
         "revision": args.revision, "data": args.data, "mode": args.mode,
+        "data_sha256": hashlib.sha256(raw_data).hexdigest(),
+        "data_manifest": data_manifest, "seed": args.seed,
+        "decoding": "greedy", "max_new_tokens_per_turn": args.max_new_tokens,
+        "max_total_tokens_per_question": args.max_total_tokens,
+        "max_tool_calls": args.max_tool_calls if args.mode == "tool" else 0,
         "n": len(records), "accuracy": sum(r["correct"] for r in records) / n,
         "format_error_rate": sum(r["format_error"] for r in records) / n,
         "mean_generated_tokens": statistics.mean(r["generated_tokens"] for r in records) if records else 0,
