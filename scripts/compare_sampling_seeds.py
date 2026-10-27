@@ -227,6 +227,8 @@ def main():
     parser.add_argument("--bootstrap-samples", type=int, default=10000)
     parser.add_argument("--group-field", default=None,
                         help="optional row field for paired subgroup summaries; defaults to kind when present")
+    parser.add_argument("--difficulty-calibration-baseline", action="append", default=None,
+                        help="independent baseline sampling run used to assign empirical difficulty bins")
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
     if len(args.baseline) != len(args.candidate) or len(args.baseline) < 2:
@@ -309,6 +311,74 @@ def main():
         for group, group_ids in sorted(groups.items())
     }
 
+    difficulty_calibration = None
+    by_calibrated_difficulty = {}
+    if args.difficulty_calibration_baseline:
+        calibration = collect(args.difficulty_calibration_baseline,
+                              "difficulty-calibration baseline")
+        calibration_seeds = sorted(calibration)
+        if set(calibration_seeds) & set(seeds):
+            raise SystemExit("difficulty-calibration seeds must be independent of evaluation seeds")
+        calibration_sample_count = 0
+        for seed in calibration_seeds:
+            run = calibration[seed]
+            if sorted(run["rows"]) != ids:
+                raise SystemExit(f"difficulty-calibration question ids differ at seed {seed}")
+            if run["config"].get("adapter") != ref_config.get("adapter"):
+                raise SystemExit("difficulty calibration must use the paired baseline adapter")
+            for key in PAIRING_KEYS:
+                if run["config"].get(key) != ref_config.get(key):
+                    raise SystemExit(f"difficulty-calibration setting {key} differs from baseline")
+            calibration_sample_count += run["config"]["num_samples"]
+        if not 4 <= calibration_sample_count <= 8:
+            raise SystemExit("difficulty calibration must use 4 to 8 independent samples per question")
+
+        difficulty_labels = {}
+        for question_id in ids:
+            correct = sum(
+                sum(calibration[seed]["rows"][question_id]["sample_correct"])
+                for seed in calibration_seeds
+            )
+            rate = correct / calibration_sample_count
+            if rate <= 0.25:
+                label = "hard"
+            elif rate >= 0.75:
+                label = "easy"
+            else:
+                label = "medium"
+            difficulty_labels.setdefault(label, []).append(question_id)
+        by_calibrated_difficulty = {
+            label: {
+                "n_questions": len(group_ids),
+                "metrics": {
+                    metric: summarize_metric(baseline, candidate, seeds, group_ids,
+                                             metric, rng, args.bootstrap_samples)
+                    for metric in METRICS
+                } | {
+                    "tool_execution_success_rate": summarize_tool_success(
+                        baseline, candidate, seeds, group_ids, rng, args.bootstrap_samples)
+                },
+            }
+            for label, group_ids in sorted(difficulty_labels.items())
+        }
+        difficulty_calibration = {
+            "runs": args.difficulty_calibration_baseline,
+            "sampling_seeds": calibration_seeds,
+            "samples_per_question": calibration_sample_count,
+            "baseline_success_rate_bins": {
+                "hard": "0% to 25% correct",
+                "medium": "more than 25% and less than 75% correct",
+                "easy": "75% to 100% correct",
+            },
+            "questions_per_bin": {
+                label: len(group_ids) for label, group_ids in sorted(difficulty_labels.items())
+            },
+            "interpretation": (
+                "Difficulty labels use independent baseline sampling seeds; comparison metrics "
+                "use the separate evaluation seeds. Bins are empirical and exploratory."
+            ),
+        }
+
     result = {
         "baseline_runs": args.baseline,
         "candidate_runs": args.candidate,
@@ -319,6 +389,8 @@ def main():
         "bootstrap_samples": args.bootstrap_samples,
         "group_field": group_field,
         "by_group": by_group,
+        "difficulty_calibration": difficulty_calibration,
+        "by_calibrated_difficulty": by_calibrated_difficulty,
         "additional_voting_policy": {
             "name": "unique plurality with at least two votes",
             "minimum_votes": 2,
