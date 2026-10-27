@@ -7,6 +7,9 @@ measured results, and limitations are documented in
 [docs/工具数学实验.md](docs/工具数学实验.md). This is separate from the legacy
 Qwen3 1.7B single-turn GRPO runs below.
 
+The original project proposal is tracked at
+[docs/5090数学推理项目方案.md](docs/5090数学推理项目方案.md).
+
 Small, reproducible interview project for post-training: train a Qwen3 policy with TRL GRPO and LoRA using only exact, programmatically checked integer answers. It deliberately targets a short single-GPU experiment, not a benchmark claim.
 
 For a detailed Chinese walkthrough of the datasets, verifier, and training stages, see [docs/实验流程说明.md](docs/实验流程说明.md). A compact report with hyperparameters, GPU memory, and accuracy across variants is in [docs/实验结果汇总报告.md](docs/实验结果汇总报告.md); detailed run notes and artifacts are in [RESULTS.md](RESULTS.md).
