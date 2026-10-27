@@ -14,6 +14,18 @@ runs/*/README.md
 runs/*/added_tokens.json
 runs/*/special_tokens_map.json
 
+# Raw rollouts and optimizer checkpoints are reproducible local artifacts.
+runs/*.jsonl
+runs/**/*.jsonl
+runs/*_queue.log
+runs/**/checkpoint-*/
+runs/**/optimizer.pt
+runs/**/scheduler.pt
+runs/**/rng_state.pth
+runs/**/trainer_state.json
+runs/**/*.safetensors
+runs/**/*.bin
+
 # Public benchmark copies are fetched on demand; retain only their manifests/results.
 /data/external/*.jsonl
 /data/external/math500.jsonl
