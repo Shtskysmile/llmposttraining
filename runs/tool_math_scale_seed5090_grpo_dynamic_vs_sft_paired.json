@@ -14,5 +14,69 @@
   "baseline_only_correct": 5,
   "candidate_only_correct": 1,
   "exact_mcnemar_two_sided_p": 0.21875,
-  "interpretation_scope": "question-sampling uncertainty only; excludes training-seed variation"
+  "interpretation_scope": "question-sampling uncertainty only; excludes training-seed variation",
+  "paired_auxiliary_metrics": {
+    "generated_tokens": {
+      "baseline_mean_per_question": 63.93333333333333,
+      "candidate_mean_per_question": 63.82666666666667,
+      "paired_difference_candidate_minus_baseline": -0.10666666666666667,
+      "question_bootstrap_95_percentile_ci": [
+        -1.1266666666666667,
+        0.8833333333333333
+      ],
+      "bootstrap_samples": 10000
+    },
+    "tool_calls": {
+      "baseline_mean_per_question": 0.7766666666666666,
+      "candidate_mean_per_question": 0.7766666666666666,
+      "paired_difference_candidate_minus_baseline": 0.0,
+      "question_bootstrap_95_percentile_ci": [
+        -0.016666666666666666,
+        0.016666666666666666
+      ],
+      "bootstrap_samples": 10000
+    },
+    "successful_tool_calls": {
+      "baseline_mean_per_question": 0.7766666666666666,
+      "candidate_mean_per_question": 0.7766666666666666,
+      "paired_difference_candidate_minus_baseline": 0.0,
+      "question_bootstrap_95_percentile_ci": [
+        -0.016666666666666666,
+        0.016666666666666666
+      ],
+      "bootstrap_samples": 10000
+    },
+    "truncated_rate": {
+      "baseline_mean_per_question": 0.0,
+      "candidate_mean_per_question": 0.0,
+      "paired_difference_candidate_minus_baseline": 0.0,
+      "question_bootstrap_95_percentile_ci": [
+        0.0,
+        0.0
+      ],
+      "bootstrap_samples": 10000
+    },
+    "format_error_rate": {
+      "baseline_mean_per_question": 0.0,
+      "candidate_mean_per_question": 0.0,
+      "paired_difference_candidate_minus_baseline": 0.0,
+      "question_bootstrap_95_percentile_ci": [
+        0.0,
+        0.0
+      ],
+      "bootstrap_samples": 10000
+    },
+    "tool_execution_success_rate": {
+      "baseline_rate": 1.0,
+      "candidate_rate": 1.0,
+      "paired_difference_candidate_minus_baseline": 0.0,
+      "question_bootstrap_95_percentile_ci": [
+        0.0,
+        0.0
+      ],
+      "valid_bootstrap_samples": 10000,
+      "bootstrap_samples_requested": 10000,
+      "denominator": "successful tool calls / all tool calls"
+    }
+  }
 }

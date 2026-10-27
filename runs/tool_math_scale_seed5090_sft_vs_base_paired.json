@@ -14,5 +14,69 @@
   "baseline_only_correct": 11,
   "candidate_only_correct": 77,
   "exact_mcnemar_two_sided_p": 2.401553173434181e-13,
-  "interpretation_scope": "question-sampling uncertainty only; excludes training-seed variation"
+  "interpretation_scope": "question-sampling uncertainty only; excludes training-seed variation",
+  "paired_auxiliary_metrics": {
+    "generated_tokens": {
+      "baseline_mean_per_question": 108.98,
+      "candidate_mean_per_question": 63.93333333333333,
+      "paired_difference_candidate_minus_baseline": -45.04666666666667,
+      "question_bootstrap_95_percentile_ci": [
+        -57.01350000000001,
+        -33.726333333333336
+      ],
+      "bootstrap_samples": 10000
+    },
+    "tool_calls": {
+      "baseline_mean_per_question": 0.7066666666666667,
+      "candidate_mean_per_question": 0.7766666666666666,
+      "paired_difference_candidate_minus_baseline": 0.07,
+      "question_bootstrap_95_percentile_ci": [
+        0.023333333333333334,
+        0.11666666666666667
+      ],
+      "bootstrap_samples": 10000
+    },
+    "successful_tool_calls": {
+      "baseline_mean_per_question": 0.55,
+      "candidate_mean_per_question": 0.7766666666666666,
+      "paired_difference_candidate_minus_baseline": 0.22666666666666666,
+      "question_bootstrap_95_percentile_ci": [
+        0.17,
+        0.2866666666666667
+      ],
+      "bootstrap_samples": 10000
+    },
+    "truncated_rate": {
+      "baseline_mean_per_question": 0.07666666666666666,
+      "candidate_mean_per_question": 0.0,
+      "paired_difference_candidate_minus_baseline": -0.07666666666666666,
+      "question_bootstrap_95_percentile_ci": [
+        -0.10666666666666667,
+        -0.04666666666666667
+      ],
+      "bootstrap_samples": 10000
+    },
+    "format_error_rate": {
+      "baseline_mean_per_question": 0.8566666666666667,
+      "candidate_mean_per_question": 0.0,
+      "paired_difference_candidate_minus_baseline": -0.8566666666666667,
+      "question_bootstrap_95_percentile_ci": [
+        -0.8966666666666666,
+        -0.8166666666666667
+      ],
+      "bootstrap_samples": 10000
+    },
+    "tool_execution_success_rate": {
+      "baseline_rate": 0.7783018867924528,
+      "candidate_rate": 1.0,
+      "paired_difference_candidate_minus_baseline": 0.22169811320754718,
+      "question_bootstrap_95_percentile_ci": [
+        0.1674019607843137,
+        0.2790697674418605
+      ],
+      "valid_bootstrap_samples": 10000,
+      "bootstrap_samples_requested": 10000,
+      "denominator": "successful tool calls / all tool calls"
+    }
+  }
 }
