@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Paired comparison across matched evaluation runs from multiple training seeds."""
 import argparse
+import hashlib
 import json
 import math
 import random
 import statistics
+import subprocess
+import sys
 from pathlib import Path
 
 
@@ -33,6 +36,12 @@ def read_run(path):
     if not config_path.is_file():
         raise SystemExit(f"missing run config: {config_path}")
     config = json.loads(config_path.read_text(encoding="utf-8"))
+    if "max_total_tokens_per_question" in config:
+        audit_script = Path(__file__).with_name("audit_rollout_run.py")
+        subprocess.run(
+            [sys.executable, str(audit_script), "--input", str(path), "--require-complete"],
+            check=True,
+        )
     rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()
             if line.strip()]
     indexed = {row["id"]: int(row["correct"]) for row in rows}
@@ -42,6 +51,25 @@ def read_run(path):
         raise SystemExit(f"run row count does not match config in {path}")
     if any(value not in (0, 1) for value in indexed.values()):
         raise SystemExit(f"non-binary correctness value in {path}")
+    if "max_total_tokens_per_question" not in config:
+        data_path = Path(config["data"])
+        raw_data = data_path.read_bytes()
+        data_sha = hashlib.sha256(raw_data).hexdigest()
+        if data_sha != config.get("data_sha256"):
+            raise SystemExit(f"source data SHA-256 differs from run config in {path}")
+        source_rows = [json.loads(line) for line in raw_data.decode("utf-8").splitlines()
+                       if line.strip()]
+        if config.get("limit") is not None:
+            source_rows = source_rows[:config["limit"]]
+        source_ids = [row["id"] for row in source_rows]
+        if len(source_rows) != config.get("n") or [row["id"] for row in rows] != source_ids:
+            raise SystemExit(f"source IDs or order differ from run output in {path}")
+        for index, (row, source) in enumerate(zip(rows, source_rows)):
+            for key, expected in source.items():
+                if row.get(key) != expected:
+                    raise SystemExit(
+                        f"source field {key!r} changed at row {index} in {path}"
+                    )
     return indexed, config
 
 
@@ -98,9 +126,12 @@ def main():
         destination = {}
         for path in paths:
             rows, config = read_run(path)
-            seed = config.get("seed")
+            # Seed sweeps compare separately trained checkpoints. Prefer that
+            # training seed when the run config points to an adapter/checkpoint;
+            # rollout seed may intentionally be the same for every model.
+            seed = training_seed(config)
             if seed is None:
-                seed = training_seed(config)
+                seed = config.get("seed")
             if seed is None and role == "baseline" and len(paths) == 1:
                 seed = "__fixed_baseline__"
             if seed is None or seed in destination:
