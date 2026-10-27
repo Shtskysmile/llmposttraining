@@ -13,6 +13,10 @@ env-grpo/bin/python scripts/summarize_matched_prompt_context.py \
   --direct-data "$data" --tool-data data/tool_math_scale_seed5090/test.jsonl \
   --output runs/tool_math_scale_seed5090_base_tool_vs_direct_fewshot_prompt_tokens.json
 
+env-grpo/bin/python scripts/audit_rollout_run.py \
+  --input runs/tool_math_scale_seed5090_base_tool_test_repro.jsonl \
+  --require-complete
+
 rollout_args=()
 if [ -f "$output" ]; then
   rollout_args+=(--resume)
@@ -22,6 +26,9 @@ env-grpo/bin/python src/rollout.py \
   --model /root/.cache/modelscope/Qwen2.5-Math-7B-Instruct \
   --data "$data" --mode direct --max-new-tokens 1024 \
   --max-total-tokens 1024 --max-tool-calls 0 --seed 5090 --output "$output"
+
+env-grpo/bin/python scripts/audit_rollout_run.py \
+  --input "$output" --require-complete
 
 env-grpo/bin/python scripts/compare_eval.py \
   --baseline runs/tool_math_scale_seed5090_base_tool_test_repro.jsonl \
