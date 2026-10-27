@@ -124,6 +124,17 @@ def main():
                     f"row {index}, sample {sample_index}: invalid successful tool-call count")
             require(isinstance(sample.get("truncated"), bool),
                     f"row {index}, sample {sample_index}: truncated must be boolean")
+            events = sample.get("tool_events")
+            require(isinstance(events, list) and len(events) == calls,
+                    f"row {index}, sample {sample_index}: tool-event count mismatch")
+            event_successes = 0
+            for event in events:
+                require(isinstance(event, dict) and isinstance(event.get("result"), dict) and
+                        isinstance(event["result"].get("ok"), bool),
+                        f"row {index}, sample {sample_index}: malformed tool event")
+                event_successes += int(event["result"]["ok"])
+            require(event_successes == successes,
+                    f"row {index}, sample {sample_index}: tool-event success count mismatch")
 
         require(row.get("generated_tokens") == sum(s["generated_tokens"] for s in samples),
                 f"row {index}: aggregate generated-token count mismatch")
@@ -188,6 +199,8 @@ def main():
         require_close(summary.get("truncated_sample_rate"),
                       total_truncated / (len(rows) * sample_count),
                       "summary truncation rate mismatch")
+    require(not args.require_complete or summary_path.is_file(),
+            "complete audit requires a summary JSON")
     require(not args.require_complete or complete,
             f"run is incomplete: {len(rows)}/{len(source)} rows")
     report = {
