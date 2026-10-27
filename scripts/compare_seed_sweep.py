@@ -9,9 +9,22 @@ from pathlib import Path
 
 
 PAIRING_KEYS = (
-    "data_sha256", "n", "mode", "revision", "decoding",
+    "data_sha256", "n", "base_model", "mode", "revision", "decoding",
     "max_new_tokens_per_turn", "max_total_tokens_per_question", "max_tool_calls", "gpu",
 )
+PAIRING_KEY_ALIASES = {
+    "max_new_tokens_per_turn": ("max_new_tokens_per_turn", "max_turn_tokens"),
+    "max_total_tokens_per_question": ("max_total_tokens_per_question", "max_total_tokens"),
+}
+
+
+def pairing_value(config, key):
+    if key == "base_model":
+        return config.get("base_model") or config.get("model")
+    for alias in PAIRING_KEY_ALIASES.get(key, (key,)):
+        if alias in config:
+            return config[alias]
+    return None
 
 
 def read_run(path):
@@ -33,13 +46,17 @@ def read_run(path):
 
 
 def training_seed(config):
-    model_path = config.get("model")
-    if not model_path:
-        return None
-    run_config_path = Path(model_path) / "run_config.json"
-    if not run_config_path.is_file():
-        return None
-    return json.loads(run_config_path.read_text(encoding="utf-8")).get("seed")
+    if config.get("training_seed") is not None:
+        return config["training_seed"]
+    for model_path in (config.get("adapter"), config.get("model")):
+        if not model_path:
+            continue
+        run_config_path = Path(model_path) / "run_config.json"
+        if run_config_path.is_file():
+            seed = json.loads(run_config_path.read_text(encoding="utf-8")).get("seed")
+            if seed is not None:
+                return seed
+    return None
 
 
 def exact_mcnemar(candidate_only, baseline_only):
@@ -82,8 +99,14 @@ def main():
         for path in paths:
             rows, config = read_run(path)
             seed = config.get("seed")
+            if seed is None:
+                seed = training_seed(config)
+            if seed is None and role == "baseline" and len(paths) == 1:
+                seed = "__fixed_baseline__"
             if seed is None or seed in destination:
-                raise SystemExit(f"{role} runs need unique, recorded evaluation seeds")
+                raise SystemExit(
+                    f"{role} runs need unique evaluation seeds or adapter training seeds"
+                )
             destination[seed] = {"path": path, "rows": rows, "config": config}
         return destination
 
@@ -106,7 +129,8 @@ def main():
     baseline_reference = baseline_runs[seeds[0]]["config"]
     candidate_reference = candidate_runs[seeds[0]]["config"]
     mismatches = [key for key in PAIRING_KEYS
-                  if baseline_reference.get(key) != candidate_reference.get(key)]
+                  if pairing_value(baseline_reference, key) !=
+                  pairing_value(candidate_reference, key)]
     if mismatches:
         raise SystemExit("paired settings differ for: " + ", ".join(mismatches))
     for seed in seeds:
@@ -129,7 +153,7 @@ def main():
         if sorted(base["rows"]) != ids:
             raise SystemExit(f"question ids differ across runs at evaluation seed {seed}")
         for key in PAIRING_KEYS:
-            if base["config"].get(key) != candidate["config"].get(key):
+            if pairing_value(base["config"], key) != pairing_value(candidate["config"], key):
                 raise SystemExit(f"paired setting {key} differs at evaluation seed {seed}")
 
     per_seed = {}
@@ -171,12 +195,17 @@ def main():
             for seed in sampled_seeds for question_id in sampled_ids))
 
     seed_differences = [per_seed[str(seed)]["paired_difference"] for seed in seeds]
+    has_evaluation_seeds = all(
+        candidate_runs[seed]["config"].get("seed") is not None for seed in seeds
+    )
     result = {
         "baseline_runs": args.baseline,
         "candidate_runs": args.candidate,
         "n_questions": len(ids),
         "n_training_seed_pairs": len(seeds),
-        "evaluation_seeds": seeds,
+        "pairing_seeds": seeds,
+        "pairing_seed_source": "evaluation" if has_evaluation_seeds else "training",
+        "evaluation_seeds": seeds if has_evaluation_seeds else None,
         "candidate_training_seeds": [per_seed[str(seed)]["candidate_training_seed"]
                                      for seed in seeds],
         "mean_baseline_accuracy": statistics.mean(
