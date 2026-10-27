@@ -12,6 +12,16 @@ from src.verifier import score
 
 
 ANSWER_OPEN = re.compile(r"<answer\b[^>]*>", re.IGNORECASE)
+TEACHER_CONFIG = {
+    "model": "Qwen/Qwen3-1.7B",
+    "base_model": None,
+    "revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+    "seed": 17,
+    "max_new_tokens": 320,
+    "batch_size": 4,
+    "decoding": "greedy",
+    "temperature": None,
+}
 
 
 def read_jsonl(path):
@@ -58,6 +68,14 @@ def main():
         raise SystemExit("teacher run config does not match the source dataset hash and row count")
     if teacher_config.get("samples_per_question") != 1:
         raise SystemExit("teacher run must contain exactly one completion per source question")
+    mismatches = {
+        key: {"expected": expected, "actual": teacher_config.get(key)}
+        for key, expected in TEACHER_CONFIG.items()
+        if teacher_config.get(key) != expected
+    }
+    if mismatches:
+        raise SystemExit("teacher run config does not match the pinned diagnostic setup: "
+                         + json.dumps(mismatches, sort_keys=True))
 
     common_rows, preserved_rows = [], []
     wrong = malformed = format_errors = 0
