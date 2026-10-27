@@ -1,0 +1,52 @@
+{
+  "input": "runs/tool_math_scale_seed5090_sft_tool_pass4_seed5090.jsonl",
+  "group_field": "kind",
+  "data_sha256": "49f6e7e924097273a4acc9df67df84e1ab4025e5bd198a634fd5960bd1912ead",
+  "num_samples": 4,
+  "total_token_budget_per_question": 1024,
+  "by_group": {
+    "conditional_probability": {
+      "n": 100,
+      "single_sample_accuracy_with_budget_split": 0.385,
+      "pass_at_k": 0.82,
+      "strict_majority_accuracy_all_questions": 0.21,
+      "strict_majority_coverage": 0.29,
+      "strict_majority_accuracy_when_resolved": 0.7241379310344828,
+      "no_consensus_rate": 0.71,
+      "no_parseable_vote_rate": 0,
+      "mean_generated_tokens_per_question": 230.84,
+      "mean_tool_calls_per_question": 2.11,
+      "tool_execution_success_rate": 0.995260663507109,
+      "truncated_sample_rate": 0.0
+    },
+    "constrained_counting": {
+      "n": 100,
+      "single_sample_accuracy_with_budget_split": 0.955,
+      "pass_at_k": 1,
+      "strict_majority_accuracy_all_questions": 0.95,
+      "strict_majority_coverage": 0.97,
+      "strict_majority_accuracy_when_resolved": 0.979381443298969,
+      "no_consensus_rate": 0.03,
+      "no_parseable_vote_rate": 0,
+      "mean_generated_tokens_per_question": 319.84,
+      "mean_tool_calls_per_question": 3.94,
+      "tool_execution_success_rate": 1.0,
+      "truncated_sample_rate": 0.0
+    },
+    "modular_system": {
+      "n": 100,
+      "single_sample_accuracy_with_budget_split": 0.825,
+      "pass_at_k": 0.9,
+      "strict_majority_accuracy_all_questions": 0.8,
+      "strict_majority_coverage": 0.92,
+      "strict_majority_accuracy_when_resolved": 0.8695652173913043,
+      "no_consensus_rate": 0.08,
+      "no_parseable_vote_rate": 0,
+      "mean_generated_tokens_per_question": 203.99,
+      "mean_tool_calls_per_question": 3.05,
+      "tool_execution_success_rate": 1.0,
+      "truncated_sample_rate": 0.0
+    }
+  },
+  "interpretation_scope": "descriptive subgroup estimates for one run; they do not estimate sampling-seed or training-seed variation."
+}

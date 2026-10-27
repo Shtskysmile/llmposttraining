@@ -1,0 +1,60 @@
+{
+  "model": "/root/.cache/modelscope/Qwen2.5-Math-7B-Instruct",
+  "adapter": "runs/tool_math_sft_qwen25math7b_scale_seed5090_boxed",
+  "revision": null,
+  "seed": 5090,
+  "temperature": 0.7,
+  "top_k": 50,
+  "top_p": 0.95,
+  "data": "data/tool_math_scale_seed5090/test.jsonl",
+  "data_sha256": "49f6e7e924097273a4acc9df67df84e1ab4025e5bd198a634fd5960bd1912ead",
+  "data_manifest": {
+    "generator": "data/generate_tool_math.py",
+    "seed": 5090,
+    "split_sizes": {
+      "train": 3000,
+      "validation": 300,
+      "test": 300
+    },
+    "families": [
+      "constrained_counting",
+      "conditional_probability",
+      "modular_system"
+    ],
+    "split_design": {
+      "counting": "test bounds and parameter ranges are disjoint from train/validation",
+      "conditional_probability": "test asks exactly-one-red; train/validation ask both-red; counts are disjoint",
+      "modular_system": "train/validation use coprime moduli; test uses consistent non-coprime moduli",
+      "duplicate_instances_rejected_across_splits": true
+    },
+    "files": {
+      "train": "56ef168bad290073d8e7f0b671390479457b0799bc6e6d2c057b22254b897e7c",
+      "validation": "173dc0e53f596c8721ebd947d9be3c135115865f85652ae8f783563e6166b002",
+      "test": "49f6e7e924097273a4acc9df67df84e1ab4025e5bd198a634fd5960bd1912ead"
+    },
+    "trajectory_files": {
+      "train_trajectories.jsonl": "9edfb7c435f29bd7baee567907072972bab7dee3e0ffca15af504dcd16d24cfa",
+      "train_trajectories_boxed.jsonl": "915743ebef29de51a0c607e5a737f880b0bb05d016ecc0c42659a743830ecf46"
+    }
+  },
+  "mode": "tool",
+  "n": 300,
+  "num_samples": 4,
+  "total_token_budget_per_question": 1024,
+  "single_sample_accuracy_with_budget_split": 0.7216666666666667,
+  "pass_at_k": 0.9066666666666666,
+  "majority_vote_accuracy": 0.6533333333333333,
+  "majority_vote_no_consensus_rate": 0.2733333333333333,
+  "no_parseable_vote_rate": 0,
+  "mean_generated_tokens_per_question": 251.55666666666667,
+  "mean_tool_calls_per_question": 3.033333333333333,
+  "mean_question_elapsed_seconds": 11.657210048766672,
+  "tool_execution_success_rate": 0.9989010989010989,
+  "truncated_sample_rate": 0.0,
+  "elapsed_seconds": 3497.2486242769955,
+  "elapsed_seconds_this_invocation": 3497.2486242769955,
+  "elapsed_seconds_scope": "current invocation only; prior interrupted attempts are excluded",
+  "resumed_from_existing_rows": 0,
+  "peak_vram_gib": 14.564531803131104,
+  "interpretation": "pass_at_k is an oracle upper bound using gold after sampling; majority voting requires a strict majority among all samples, with unparseable outputs counted as non-votes that remain in the denominator."
+}

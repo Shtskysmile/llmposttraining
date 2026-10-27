@@ -1,0 +1,512 @@
+{
+  "input": "runs/tool_math_scale_seed5090_sft_tool_pass4_seed5090.jsonl",
+  "data_sha256": "49f6e7e924097273a4acc9df67df84e1ab4025e5bd198a634fd5960bd1912ead",
+  "num_samples": 4,
+  "vote_rule": "count exact normalized answers among parseable samples; select a unique top answer only when its vote count reaches the policy minimum; otherwise abstain",
+  "strict_majority_min_votes": 3,
+  "bootstrap_seed": 5090,
+  "bootstrap_samples": 10000,
+  "overall": {
+    "1": {
+      "min_votes_for_unique_top": 1,
+      "n": 300,
+      "answered": 262,
+      "correct_answers": 218,
+      "coverage": 0.8733333333333333,
+      "coverage_question_bootstrap_95_percentile_ci": [
+        0.8333333333333334,
+        0.91
+      ],
+      "accuracy_all_questions": 0.7266666666666667,
+      "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+        0.6766666666666666,
+        0.7766666666666666
+      ],
+      "accuracy_when_answered": 0.8320610687022901,
+      "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+        0.7857142857142857,
+        0.8754863813229572
+      ],
+      "accuracy_when_answered_question_bootstrap_valid_replicates": 10000,
+      "mean_votes_for_answered_questions": 3.5114503816793894,
+      "paired_difference_vs_strict_majority": {
+        "coverage": 0.1466666666666666,
+        "coverage_question_bootstrap_95_percentile_ci": [
+          0.10666666666666667,
+          0.18666666666666668
+        ],
+        "accuracy_all_questions": 0.07333333333333336,
+        "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+          0.04666666666666667,
+          0.10333333333333333
+        ],
+        "accuracy_when_answered": -0.06702150010504937,
+        "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+          -0.10015946409965909,
+          -0.0369668348347283
+        ],
+        "accuracy_when_answered_question_bootstrap_valid_replicates": 10000
+      }
+    },
+    "2": {
+      "min_votes_for_unique_top": 2,
+      "n": 300,
+      "answered": 262,
+      "correct_answers": 218,
+      "coverage": 0.8733333333333333,
+      "coverage_question_bootstrap_95_percentile_ci": [
+        0.8333333333333334,
+        0.91
+      ],
+      "accuracy_all_questions": 0.7266666666666667,
+      "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+        0.6766666666666666,
+        0.7766666666666666
+      ],
+      "accuracy_when_answered": 0.8320610687022901,
+      "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+        0.7854545454545454,
+        0.8759697674418604
+      ],
+      "accuracy_when_answered_question_bootstrap_valid_replicates": 10000,
+      "mean_votes_for_answered_questions": 3.5114503816793894,
+      "paired_difference_vs_strict_majority": {
+        "coverage": 0.1466666666666666,
+        "coverage_question_bootstrap_95_percentile_ci": [
+          0.10666666666666667,
+          0.18666666666666668
+        ],
+        "accuracy_all_questions": 0.07333333333333336,
+        "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+          0.043333333333333335,
+          0.10333333333333333
+        ],
+        "accuracy_when_answered": -0.06702150010504937,
+        "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+          -0.10019702138692213,
+          -0.03715303190919082
+        ],
+        "accuracy_when_answered_question_bootstrap_valid_replicates": 10000
+      }
+    },
+    "3": {
+      "min_votes_for_unique_top": 3,
+      "n": 300,
+      "answered": 218,
+      "correct_answers": 196,
+      "coverage": 0.7266666666666667,
+      "coverage_question_bootstrap_95_percentile_ci": [
+        0.6733333333333333,
+        0.7766666666666666
+      ],
+      "accuracy_all_questions": 0.6533333333333333,
+      "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+        0.6,
+        0.7066666666666667
+      ],
+      "accuracy_when_answered": 0.8990825688073395,
+      "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+        0.8577981651376146,
+        0.9377777777777778
+      ],
+      "accuracy_when_answered_question_bootstrap_valid_replicates": 10000,
+      "mean_votes_for_answered_questions": 3.81651376146789,
+      "paired_difference_vs_strict_majority": {
+        "coverage": 0.0,
+        "coverage_question_bootstrap_95_percentile_ci": [
+          0.0,
+          0.0
+        ],
+        "accuracy_all_questions": 0.0,
+        "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+          0.0,
+          0.0
+        ],
+        "accuracy_when_answered": 0.0,
+        "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+          0.0,
+          0.0
+        ],
+        "accuracy_when_answered_question_bootstrap_valid_replicates": 10000
+      }
+    }
+  },
+  "by_group": {
+    "conditional_probability": {
+      "1": {
+        "min_votes_for_unique_top": 1,
+        "n": 100,
+        "answered": 68,
+        "correct_answers": 40,
+        "coverage": 0.68,
+        "coverage_question_bootstrap_95_percentile_ci": [
+          0.59,
+          0.77
+        ],
+        "accuracy_all_questions": 0.4,
+        "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+          0.3,
+          0.5
+        ],
+        "accuracy_when_answered": 0.5882352941176471,
+        "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+          0.4666666666666667,
+          0.7042426691295309
+        ],
+        "accuracy_when_answered_question_bootstrap_valid_replicates": 10000,
+        "mean_votes_for_answered_questions": 2.514705882352941,
+        "paired_difference_vs_strict_majority": {
+          "coverage": 0.39000000000000007,
+          "coverage_question_bootstrap_95_percentile_ci": [
+            0.3,
+            0.48
+          ],
+          "accuracy_all_questions": 0.19000000000000003,
+          "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+            0.12,
+            0.27
+          ],
+          "accuracy_when_answered": -0.13590263691683568,
+          "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+            -0.27385425685425685,
+            -0.0025247778537251897
+          ],
+          "accuracy_when_answered_question_bootstrap_valid_replicates": 10000
+        }
+      },
+      "2": {
+        "min_votes_for_unique_top": 2,
+        "n": 100,
+        "answered": 68,
+        "correct_answers": 40,
+        "coverage": 0.68,
+        "coverage_question_bootstrap_95_percentile_ci": [
+          0.59,
+          0.77
+        ],
+        "accuracy_all_questions": 0.4,
+        "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+          0.31,
+          0.5
+        ],
+        "accuracy_when_answered": 0.5882352941176471,
+        "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+          0.4696969696969697,
+          0.704225352112676
+        ],
+        "accuracy_when_answered_question_bootstrap_valid_replicates": 10000,
+        "mean_votes_for_answered_questions": 2.514705882352941,
+        "paired_difference_vs_strict_majority": {
+          "coverage": 0.39000000000000007,
+          "coverage_question_bootstrap_95_percentile_ci": [
+            0.3,
+            0.49
+          ],
+          "accuracy_all_questions": 0.19000000000000003,
+          "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+            0.12,
+            0.27
+          ],
+          "accuracy_when_answered": -0.13590263691683568,
+          "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+            -0.2687774870567277,
+            0.001831670168067218
+          ],
+          "accuracy_when_answered_question_bootstrap_valid_replicates": 10000
+        }
+      },
+      "3": {
+        "min_votes_for_unique_top": 3,
+        "n": 100,
+        "answered": 29,
+        "correct_answers": 21,
+        "coverage": 0.29,
+        "coverage_question_bootstrap_95_percentile_ci": [
+          0.2,
+          0.38
+        ],
+        "accuracy_all_questions": 0.21,
+        "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+          0.13,
+          0.29
+        ],
+        "accuracy_when_answered": 0.7241379310344828,
+        "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+          0.5517241379310345,
+          0.8787878787878788
+        ],
+        "accuracy_when_answered_question_bootstrap_valid_replicates": 10000,
+        "mean_votes_for_answered_questions": 3.206896551724138,
+        "paired_difference_vs_strict_majority": {
+          "coverage": 0.0,
+          "coverage_question_bootstrap_95_percentile_ci": [
+            0.0,
+            0.0
+          ],
+          "accuracy_all_questions": 0.0,
+          "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+            0.0,
+            0.0
+          ],
+          "accuracy_when_answered": 0.0,
+          "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+            0.0,
+            0.0
+          ],
+          "accuracy_when_answered_question_bootstrap_valid_replicates": 10000
+        }
+      }
+    },
+    "constrained_counting": {
+      "1": {
+        "min_votes_for_unique_top": 1,
+        "n": 100,
+        "answered": 99,
+        "correct_answers": 96,
+        "coverage": 0.99,
+        "coverage_question_bootstrap_95_percentile_ci": [
+          0.97,
+          1.0
+        ],
+        "accuracy_all_questions": 0.96,
+        "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+          0.92,
+          0.99
+        ],
+        "accuracy_when_answered": 0.9696969696969697,
+        "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+          0.93,
+          1.0
+        ],
+        "accuracy_when_answered_question_bootstrap_valid_replicates": 10000,
+        "mean_votes_for_answered_questions": 3.888888888888889,
+        "paired_difference_vs_strict_majority": {
+          "coverage": 0.020000000000000018,
+          "coverage_question_bootstrap_95_percentile_ci": [
+            0.0,
+            0.05
+          ],
+          "accuracy_all_questions": 0.010000000000000009,
+          "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+            0.0,
+            0.03
+          ],
+          "accuracy_when_answered": -0.00968447360199931,
+          "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+            -0.030303030303030276,
+            0.0006377551020407823
+          ],
+          "accuracy_when_answered_question_bootstrap_valid_replicates": 10000
+        }
+      },
+      "2": {
+        "min_votes_for_unique_top": 2,
+        "n": 100,
+        "answered": 99,
+        "correct_answers": 96,
+        "coverage": 0.99,
+        "coverage_question_bootstrap_95_percentile_ci": [
+          0.97,
+          1.0
+        ],
+        "accuracy_all_questions": 0.96,
+        "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+          0.92,
+          0.99
+        ],
+        "accuracy_when_answered": 0.9696969696969697,
+        "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+          0.93,
+          1.0
+        ],
+        "accuracy_when_answered_question_bootstrap_valid_replicates": 10000,
+        "mean_votes_for_answered_questions": 3.888888888888889,
+        "paired_difference_vs_strict_majority": {
+          "coverage": 0.020000000000000018,
+          "coverage_question_bootstrap_95_percentile_ci": [
+            0.0,
+            0.05
+          ],
+          "accuracy_all_questions": 0.010000000000000009,
+          "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+            0.0,
+            0.03
+          ],
+          "accuracy_when_answered": -0.00968447360199931,
+          "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+            -0.030290010741138573,
+            0.0006444683136411777
+          ],
+          "accuracy_when_answered_question_bootstrap_valid_replicates": 10000
+        }
+      },
+      "3": {
+        "min_votes_for_unique_top": 3,
+        "n": 100,
+        "answered": 97,
+        "correct_answers": 95,
+        "coverage": 0.97,
+        "coverage_question_bootstrap_95_percentile_ci": [
+          0.93,
+          1.0
+        ],
+        "accuracy_all_questions": 0.95,
+        "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+          0.9,
+          0.99
+        ],
+        "accuracy_when_answered": 0.979381443298969,
+        "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+          0.9484536082474226,
+          1.0
+        ],
+        "accuracy_when_answered_question_bootstrap_valid_replicates": 10000,
+        "mean_votes_for_answered_questions": 3.9278350515463916,
+        "paired_difference_vs_strict_majority": {
+          "coverage": 0.0,
+          "coverage_question_bootstrap_95_percentile_ci": [
+            0.0,
+            0.0
+          ],
+          "accuracy_all_questions": 0.0,
+          "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+            0.0,
+            0.0
+          ],
+          "accuracy_when_answered": 0.0,
+          "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+            0.0,
+            0.0
+          ],
+          "accuracy_when_answered_question_bootstrap_valid_replicates": 10000
+        }
+      }
+    },
+    "modular_system": {
+      "1": {
+        "min_votes_for_unique_top": 1,
+        "n": 100,
+        "answered": 95,
+        "correct_answers": 82,
+        "coverage": 0.95,
+        "coverage_question_bootstrap_95_percentile_ci": [
+          0.9097500000000003,
+          0.99
+        ],
+        "accuracy_all_questions": 0.82,
+        "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+          0.75,
+          0.89
+        ],
+        "accuracy_when_answered": 0.8631578947368421,
+        "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+          0.7916666666666666,
+          0.9270833333333334
+        ],
+        "accuracy_when_answered_question_bootstrap_valid_replicates": 10000,
+        "mean_votes_for_answered_questions": 3.831578947368421,
+        "paired_difference_vs_strict_majority": {
+          "coverage": 0.029999999999999916,
+          "coverage_question_bootstrap_95_percentile_ci": [
+            0.0,
+            0.07
+          ],
+          "accuracy_all_questions": 0.019999999999999907,
+          "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+            0.0,
+            0.05
+          ],
+          "accuracy_when_answered": -0.0064073226544622,
+          "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+            -0.0271875164255174,
+            0.006295787545787523
+          ],
+          "accuracy_when_answered_question_bootstrap_valid_replicates": 10000
+        }
+      },
+      "2": {
+        "min_votes_for_unique_top": 2,
+        "n": 100,
+        "answered": 95,
+        "correct_answers": 82,
+        "coverage": 0.95,
+        "coverage_question_bootstrap_95_percentile_ci": [
+          0.9,
+          0.99
+        ],
+        "accuracy_all_questions": 0.82,
+        "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+          0.74,
+          0.89
+        ],
+        "accuracy_when_answered": 0.8631578947368421,
+        "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+          0.7916666666666666,
+          0.9278350515463918
+        ],
+        "accuracy_when_answered_question_bootstrap_valid_replicates": 10000,
+        "mean_votes_for_answered_questions": 3.831578947368421,
+        "paired_difference_vs_strict_majority": {
+          "coverage": 0.029999999999999916,
+          "coverage_question_bootstrap_95_percentile_ci": [
+            0.0,
+            0.07
+          ],
+          "accuracy_all_questions": 0.019999999999999907,
+          "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+            0.0,
+            0.05
+          ],
+          "accuracy_when_answered": -0.0064073226544622,
+          "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+            -0.027459954233409634,
+            0.006295787545787523
+          ],
+          "accuracy_when_answered_question_bootstrap_valid_replicates": 10000
+        }
+      },
+      "3": {
+        "min_votes_for_unique_top": 3,
+        "n": 100,
+        "answered": 92,
+        "correct_answers": 80,
+        "coverage": 0.92,
+        "coverage_question_bootstrap_95_percentile_ci": [
+          0.86,
+          0.97
+        ],
+        "accuracy_all_questions": 0.8,
+        "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+          0.72,
+          0.87
+        ],
+        "accuracy_when_answered": 0.8695652173913043,
+        "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+          0.7978723404255319,
+          0.9347826086956522
+        ],
+        "accuracy_when_answered_question_bootstrap_valid_replicates": 10000,
+        "mean_votes_for_answered_questions": 3.891304347826087,
+        "paired_difference_vs_strict_majority": {
+          "coverage": 0.0,
+          "coverage_question_bootstrap_95_percentile_ci": [
+            0.0,
+            0.0
+          ],
+          "accuracy_all_questions": 0.0,
+          "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
+            0.0,
+            0.0
+          ],
+          "accuracy_when_answered": 0.0,
+          "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
+            0.0,
+            0.0
+          ],
+          "accuracy_when_answered_question_bootstrap_valid_replicates": 10000
+        }
+      }
+    }
+  },
+  "interpretation_scope": "question bootstrap for one trained model and one rollout-sampling seed; it does not estimate training-seed or rollout-seed variation. Thresholds are exploratory."
+}

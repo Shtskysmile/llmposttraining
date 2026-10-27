@@ -1,0 +1,52 @@
+{
+  "input": "runs/tool_math_scale_seed5090_base_tool_pass4_seed5090.jsonl",
+  "group_field": "kind",
+  "data_sha256": "49f6e7e924097273a4acc9df67df84e1ab4025e5bd198a634fd5960bd1912ead",
+  "num_samples": 4,
+  "total_token_budget_per_question": 1024,
+  "by_group": {
+    "conditional_probability": {
+      "n": 100,
+      "single_sample_accuracy_with_budget_split": 0.23,
+      "pass_at_k": 0.66,
+      "strict_majority_accuracy_all_questions": 0.05,
+      "strict_majority_coverage": 0.07,
+      "strict_majority_accuracy_when_resolved": 0.7142857142857143,
+      "no_consensus_rate": 0.93,
+      "no_parseable_vote_rate": 0,
+      "mean_generated_tokens_per_question": 329.9,
+      "mean_tool_calls_per_question": 1.64,
+      "tool_execution_success_rate": 0.9207317073170732,
+      "truncated_sample_rate": 0.135
+    },
+    "constrained_counting": {
+      "n": 100,
+      "single_sample_accuracy_with_budget_split": 0.405,
+      "pass_at_k": 0.83,
+      "strict_majority_accuracy_all_questions": 0.2,
+      "strict_majority_coverage": 0.2,
+      "strict_majority_accuracy_when_resolved": 1,
+      "no_consensus_rate": 0.8,
+      "no_parseable_vote_rate": 0.01,
+      "mean_generated_tokens_per_question": 581.22,
+      "mean_tool_calls_per_question": 3.13,
+      "tool_execution_success_rate": 0.731629392971246,
+      "truncated_sample_rate": 0.215
+    },
+    "modular_system": {
+      "n": 100,
+      "single_sample_accuracy_with_budget_split": 0.26,
+      "pass_at_k": 0.63,
+      "strict_majority_accuracy_all_questions": 0.11,
+      "strict_majority_coverage": 0.12,
+      "strict_majority_accuracy_when_resolved": 0.9166666666666666,
+      "no_consensus_rate": 0.88,
+      "no_parseable_vote_rate": 0.17,
+      "mean_generated_tokens_per_question": 609.01,
+      "mean_tool_calls_per_question": 2.42,
+      "tool_execution_success_rate": 0.5743801652892562,
+      "truncated_sample_rate": 0.4375
+    }
+  },
+  "interpretation_scope": "descriptive subgroup estimates for one run; they do not estimate sampling-seed or training-seed variation."
+}
