@@ -250,14 +250,19 @@ def main():
         "sampling_distribution": "temperature/top-k/top-p transformed categorical distribution; logprobs use same warpers",
         "dynamic_acceptance": "retain only groups with nonzero shaped-reward variance",
         "reward_definition": (
-            "exact correctness minus token_cost_weight * generated_tokens/max_total_tokens "
-            "minus tool_call_cost_weight * tool_calls/max_tool_calls; ratios capped at 1"
+            "correctness * (1 - token_cost_weight * generated_tokens/max_total_tokens "
+            "- tool_call_cost_weight * tool_calls/max_tool_calls); ratios capped at 1; "
+            "cost penalties apply only to correct trajectories"
             if args.token_cost_weight or args.tool_call_cost_weight else "exact final-answer correctness"
+        ),
+        "cost_penalty_scope": (
+            "correct trajectories only; incorrect trajectories receive zero reward"
+            if args.token_cost_weight or args.tool_call_cost_weight else "disabled"
         ),
         "token_cost_weight": args.token_cost_weight,
         "tool_call_cost_weight": args.tool_call_cost_weight,
         "correctness_reward_margin_guarantee": (
-            "correct rewards are at least 1 - sum(cost weights) > 0; incorrect rewards are at most 0"
+            "correct rewards are at least 1 - sum(cost weights) > 0; incorrect rewards are zero"
         ),
         "tool_output_has_policy_loss": False,
         "sampled_kl_stabilization": f"clip log(reference/policy) to +/- {args.kl_log_ratio_clip}; token log-probabilities floor at -30",
@@ -299,7 +304,7 @@ def main():
                     episode["generated_tokens"] / args.max_total_tokens, 1.0)
                 call_cost = args.tool_call_cost_weight * min(
                     episode["tool_calls"] / max(1, args.max_tool_calls), 1.0)
-                rewards.append(correct - token_cost - call_cost)
+                rewards.append(correct * (1.0 - token_cost - call_cost))
             step_attempts += 1
             step_trajectories += len(group)
             step_correct_trajectories += sum(correctness)
