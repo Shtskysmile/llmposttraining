@@ -1,0 +1,121 @@
+{
+  "baseline": "runs/tool_math_scale_seed5090_base_tool_pass4_seed5090.jsonl",
+  "candidate": "runs/tool_math_scale_seed5090_sft_tool_pass4_seed5090.jsonl",
+  "paired_configuration": {
+    "data_sha256": "49f6e7e924097273a4acc9df67df84e1ab4025e5bd198a634fd5960bd1912ead",
+    "n": 300,
+    "model": "/root/.cache/modelscope/Qwen2.5-Math-7B-Instruct",
+    "mode": "tool",
+    "revision": null,
+    "seed": 5090,
+    "num_samples": 4,
+    "max_total_tokens": 1024,
+    "max_new_tokens": 384,
+    "max_tool_calls": 2,
+    "temperature": 0.7,
+    "top_p": 0.95,
+    "top_k": 50,
+    "per_sample_token_budgets": [
+      256,
+      256,
+      256,
+      256
+    ],
+    "majority_vote_rule": "require one exact answer with strictly more than half of all samples",
+    "unparseable_answers_in_vote": "no vote, but remain in the denominator",
+    "sampling": "temperature/top-k/top-p categorical sampling",
+    "seed_strategy": "base seed plus source row index, reset before each question",
+    "gpu": "NVIDIA GeForce RTX 5090"
+  },
+  "bootstrap_seed": 5090,
+  "additional_voting_policy": {
+    "name": "unique plurality with at least two votes",
+    "minimum_votes": 2,
+    "top_answer_ties": "abstain",
+    "unparseable_samples": "do not vote"
+  },
+  "metrics": {
+    "sample_accuracy": {
+      "n": 300,
+      "baseline": 0.29833333333333334,
+      "candidate": 0.7216666666666667,
+      "paired_difference": 0.42333333333333334,
+      "bootstrap_95_percentile_ci": [
+        0.38166666666666665,
+        0.46416666666666667
+      ],
+      "bootstrap_samples": 10000
+    },
+    "pass_at_k": {
+      "n": 300,
+      "baseline": 0.7066666666666667,
+      "candidate": 0.9066666666666666,
+      "paired_difference": 0.2,
+      "bootstrap_95_percentile_ci": [
+        0.14666666666666667,
+        0.25333333333333335
+      ],
+      "bootstrap_samples": 10000,
+      "baseline_only_correct": 11,
+      "candidate_only_correct": 71,
+      "exact_mcnemar_two_sided_p": 6.813783012674701e-12
+    },
+    "majority_vote_accuracy": {
+      "n": 300,
+      "baseline": 0.12,
+      "candidate": 0.6533333333333333,
+      "paired_difference": 0.5333333333333333,
+      "bootstrap_95_percentile_ci": [
+        0.4766666666666667,
+        0.59
+      ],
+      "bootstrap_samples": 10000,
+      "baseline_only_correct": 2,
+      "candidate_only_correct": 162,
+      "exact_mcnemar_two_sided_p": 1.15728573735224e-45
+    },
+    "majority_vote_coverage": {
+      "n": 300,
+      "baseline": 0.13,
+      "candidate": 0.7266666666666667,
+      "paired_difference": 0.5966666666666667,
+      "bootstrap_95_percentile_ci": [
+        0.54,
+        0.6533333333333333
+      ],
+      "bootstrap_samples": 10000,
+      "baseline_only_covered": 3,
+      "candidate_only_covered": 182,
+      "exact_mcnemar_two_sided_p": 4.304359995901132e-50
+    },
+    "plurality_min2_accuracy": {
+      "n": 300,
+      "baseline": 0.3433333333333333,
+      "candidate": 0.7266666666666667,
+      "paired_difference": 0.38333333333333336,
+      "bootstrap_95_percentile_ci": [
+        0.32,
+        0.44666666666666666
+      ],
+      "bootstrap_samples": 10000,
+      "baseline_only_correct": 12,
+      "candidate_only_correct": 127,
+      "exact_mcnemar_two_sided_p": 2.108124581703748e-25
+    },
+    "plurality_min2_coverage": {
+      "n": 300,
+      "baseline": 0.41,
+      "candidate": 0.8733333333333333,
+      "paired_difference": 0.4633333333333333,
+      "bootstrap_95_percentile_ci": [
+        0.39666666666666667,
+        0.5266666666666666
+      ],
+      "bootstrap_samples": 10000,
+      "baseline_only_covered": 13,
+      "candidate_only_covered": 152,
+      "exact_mcnemar_two_sided_p": 3.1021113900808593e-31
+    }
+  },
+  "interpretation_scope": "question-level paired uncertainty only; one rollout seed and one training seed per model, so stochastic sampling and training-seed variation are not estimated"
+}

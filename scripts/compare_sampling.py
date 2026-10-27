@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 """Paired question-level analysis for token-budgeted multi-sample runs."""
 import argparse
+from collections import Counter
 import json
 import math
 import random
 import statistics
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from src.verifier import extract_answer, score
 
 
 PAIRING_KEYS = (
-    "data_sha256", "n", "mode", "revision", "seed", "num_samples",
+    "data_sha256", "n", "model", "mode", "revision", "seed", "num_samples",
     "max_total_tokens", "max_new_tokens", "max_tool_calls", "temperature", "top_p",
     "top_k", "per_sample_token_budgets", "majority_vote_rule", "unparseable_answers_in_vote",
     "sampling", "seed_strategy", "gpu",
@@ -40,6 +45,24 @@ def metric_value(row, metric):
         if any(value not in (0, 1, False, True) for value in values):
             raise SystemExit("sample_correct entries must be binary")
         return statistics.mean(values)
+    if metric == "majority_vote_coverage":
+        return int(not row["majority_vote_no_consensus"])
+    if metric in ("plurality_min2_accuracy", "plurality_min2_coverage"):
+        counts = Counter(
+            str(answer)
+            for sample in row["samples"]
+            if (answer := extract_answer(sample["completion"])) is not None
+        )
+        selected = None
+        if counts:
+            highest = max(counts.values())
+            winners = [answer for answer, count in counts.items() if count == highest]
+            if highest >= 2 and len(winners) == 1:
+                selected = winners[0]
+        if metric == "plurality_min2_coverage":
+            return int(selected is not None)
+        return int(selected is not None and
+                   score(f"<answer>{selected}</answer>", row["answer"]))
     field = "pass_at_k" if metric == "pass_at_k" else "majority_vote_correct"
     value = row.get(field)
     if value not in (0, 1, False, True):
@@ -80,12 +103,13 @@ def compare_metric(baseline, candidate, ids, metric, rng, bootstrap_samples):
         "bootstrap_95_percentile_ci": [quantile(boot, 0.025), quantile(boot, 0.975)],
         "bootstrap_samples": bootstrap_samples,
     }
-    if metric in ("pass_at_k", "majority_vote_accuracy"):
+    if metric != "sample_accuracy":
         baseline_only = sum(value == -1 for value in differences)
         candidate_only = sum(value == 1 for value in differences)
+        event_name = "covered" if metric.endswith("coverage") else "correct"
         result.update({
-            "baseline_only_correct": baseline_only,
-            "candidate_only_correct": candidate_only,
+            f"baseline_only_{event_name}": baseline_only,
+            f"candidate_only_{event_name}": candidate_only,
             "exact_mcnemar_two_sided_p": exact_mcnemar(candidate_only, baseline_only),
         })
     return result
@@ -117,10 +141,18 @@ def main():
     }
     if sample_counts != {baseline_config["num_samples"]}:
         raise SystemExit("sample_correct counts do not match the configured sample count")
+    output_sample_counts = {
+        len(row.get("samples", []))
+        for dataset in (baseline, candidate) for row in dataset.values()
+    }
+    if output_sample_counts != {baseline_config["num_samples"]}:
+        raise SystemExit("sample records do not match the configured sample count")
 
     rng = random.Random(args.seed)
     metrics = {}
-    for metric in ("sample_accuracy", "pass_at_k", "majority_vote_accuracy"):
+    for metric in ("sample_accuracy", "pass_at_k", "majority_vote_accuracy",
+                   "majority_vote_coverage", "plurality_min2_accuracy",
+                   "plurality_min2_coverage"):
         metrics[metric] = compare_metric(
             baseline, candidate, ids, metric, rng, args.bootstrap_samples)
     result = {
@@ -128,6 +160,12 @@ def main():
         "candidate": args.candidate,
         "paired_configuration": {key: baseline_config[key] for key in PAIRING_KEYS},
         "bootstrap_seed": args.seed,
+        "additional_voting_policy": {
+            "name": "unique plurality with at least two votes",
+            "minimum_votes": 2,
+            "top_answer_ties": "abstain",
+            "unparseable_samples": "do not vote",
+        },
         "metrics": metrics,
         "interpretation_scope": (
             "question-level paired uncertainty only; one rollout seed and one training seed "
