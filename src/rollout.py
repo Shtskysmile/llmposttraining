@@ -127,6 +127,17 @@ def load_resume_prefix(output, config_path, run_config, rows, args):
         if not isinstance(record.get("successful_tool_calls"), int) or not (
                 0 <= record["successful_tool_calls"] <= record["tool_calls"]):
             raise SystemExit(f"resume row {index} has an invalid successful-tool-call count")
+        events = record.get("tool_events")
+        if not isinstance(events, list) or len(events) != record["tool_calls"]:
+            raise SystemExit(f"resume row {index} has a tool-event count mismatch")
+        event_successes = 0
+        for event in events:
+            if (not isinstance(event, dict) or not isinstance(event.get("result"), dict) or
+                    not isinstance(event["result"].get("ok"), bool)):
+                raise SystemExit(f"resume row {index} has a malformed tool event")
+            event_successes += int(event["result"]["ok"])
+        if event_successes != record["successful_tool_calls"]:
+            raise SystemExit(f"resume row {index} has inconsistent tool-event successes")
         if not isinstance(record.get("truncated"), bool):
             raise SystemExit(f"resume row {index} has an invalid truncation flag")
 
