@@ -167,12 +167,13 @@ def main():
         summary = json.loads(summary_path.read_text(encoding="utf-8"))
         require(complete, "summary exists but the JSONL output is incomplete")
         require(summary.get("n") == len(rows), "summary row count does not match JSONL output")
-        require(summary.get("data_sha256") == data_sha,
-                "summary data SHA-256 does not match run config")
-        require(summary.get("num_samples") == sample_count,
-                "summary sample count does not match run config")
-        require(summary.get("seed") == config["seed"],
-                "summary seed does not match run config")
+        for key in ("model", "adapter", "revision", "data", "data_sha256",
+                    "data_manifest", "mode", "seed", "num_samples",
+                    "temperature", "top_k", "top_p"):
+            require(key in summary and summary[key] == config.get(key),
+                    f"summary metadata mismatch for {key}")
+        require(summary.get("total_token_budget_per_question") == max_total,
+                "summary token budget does not match run config")
         require_close(
             summary.get("single_sample_accuracy_with_budget_split"),
             statistics.mean(value for row in rows for value in row["sample_correct"]),
