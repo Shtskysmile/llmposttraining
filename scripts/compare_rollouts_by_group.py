@@ -43,6 +43,51 @@ def quantile(values, q):
     return ordered[lower] * (upper - position) + ordered[upper] * (position - lower)
 
 
+def paired_metric(baseline, candidate, ids, field, rng, bootstrap_samples):
+    baseline_values = [float(baseline[qid][field]) for qid in ids]
+    candidate_values = [float(candidate[qid][field]) for qid in ids]
+    differences = [new - old for old, new in zip(baseline_values, candidate_values)]
+    bootstrap = [sum(differences[rng.randrange(len(ids))] for _ in ids) / len(ids)
+                 for _ in range(bootstrap_samples)]
+    return {
+        "baseline_mean_per_question": sum(baseline_values) / len(ids),
+        "candidate_mean_per_question": sum(candidate_values) / len(ids),
+        "paired_difference_candidate_minus_baseline": sum(differences) / len(ids),
+        "question_bootstrap_95_percentile_ci": [
+            quantile(bootstrap, 0.025), quantile(bootstrap, 0.975)],
+        "bootstrap_samples": bootstrap_samples,
+    }
+
+
+def paired_tool_success_rate(baseline, candidate, ids, rng, bootstrap_samples):
+    def rate(rows, sampled_ids):
+        calls = sum(float(rows[qid]["tool_calls"]) for qid in sampled_ids)
+        successes = sum(float(rows[qid]["successful_tool_calls"])
+                        for qid in sampled_ids)
+        return successes / calls if calls else None
+
+    baseline_rate = rate(baseline, ids)
+    candidate_rate = rate(candidate, ids)
+    bootstrap = []
+    for _ in range(bootstrap_samples):
+        sampled_ids = [ids[rng.randrange(len(ids))] for _ in ids]
+        old_rate, new_rate = rate(baseline, sampled_ids), rate(candidate, sampled_ids)
+        if old_rate is not None and new_rate is not None:
+            bootstrap.append(new_rate - old_rate)
+    return {
+        "baseline_rate": baseline_rate,
+        "candidate_rate": candidate_rate,
+        "paired_difference_candidate_minus_baseline": (
+            candidate_rate - baseline_rate
+            if baseline_rate is not None and candidate_rate is not None else None),
+        "question_bootstrap_95_percentile_ci": (
+            [quantile(bootstrap, 0.025), quantile(bootstrap, 0.975)] if bootstrap else None),
+        "valid_bootstrap_samples": len(bootstrap),
+        "bootstrap_samples_requested": bootstrap_samples,
+        "denominator": "successful tool calls / all tool calls",
+    }
+
+
 def compare_group(baseline, candidate, rng, bootstrap_samples):
     ids = sorted(baseline)
     differences = [int(candidate[qid]["correct"]) - int(baseline[qid]["correct"])
@@ -51,7 +96,7 @@ def compare_group(baseline, candidate, rng, bootstrap_samples):
     candidate_only = sum(value == 1 for value in differences)
     bootstrap = [sum(differences[rng.randrange(len(ids))] for _ in ids) / len(ids)
                  for _ in range(bootstrap_samples)]
-    return {
+    result = {
         "n": len(ids),
         "baseline_accuracy": sum(int(baseline[qid]["correct"]) for qid in ids) / len(ids),
         "candidate_accuracy": sum(int(candidate[qid]["correct"]) for qid in ids) / len(ids),
@@ -62,6 +107,40 @@ def compare_group(baseline, candidate, rng, bootstrap_samples):
         "candidate_only_correct": candidate_only,
         "exact_mcnemar_two_sided_p": exact_mcnemar(candidate_only, baseline_only),
     }
+    optional_metrics = {}
+    for field in ("generated_tokens", "tool_calls", "successful_tool_calls",
+                  "truncated", "format_error"):
+        baseline_presence = [field in baseline[qid] for qid in ids]
+        candidate_presence = [field in candidate[qid] for qid in ids]
+        if any(baseline_presence) and not all(baseline_presence):
+            raise SystemExit(f"metric {field!r} is incomplete in the baseline group")
+        if any(candidate_presence) and not all(candidate_presence):
+            raise SystemExit(f"metric {field!r} is incomplete in the candidate group")
+        baseline_has, candidate_has = all(baseline_presence), all(candidate_presence)
+        if baseline_has != candidate_has:
+            raise SystemExit(f"metric {field!r} is missing from one paired group")
+        if baseline_has:
+            metric_name = {"truncated": "truncated_rate",
+                           "format_error": "format_error_rate"}.get(field, field)
+            optional_metrics[metric_name] = paired_metric(
+                baseline, candidate, ids, field, rng, bootstrap_samples)
+    baseline_call_fields = [
+        "tool_calls" in baseline[qid] and "successful_tool_calls" in baseline[qid]
+        for qid in ids]
+    candidate_call_fields = [
+        "tool_calls" in candidate[qid] and "successful_tool_calls" in candidate[qid]
+        for qid in ids]
+    if any(baseline_call_fields) and not all(baseline_call_fields):
+        raise SystemExit("tool success fields are incomplete in the baseline group")
+    if any(candidate_call_fields) and not all(candidate_call_fields):
+        raise SystemExit("tool success fields are incomplete in the candidate group")
+    if all(baseline_call_fields) != all(candidate_call_fields):
+        raise SystemExit("tool success fields are missing from one paired group")
+    if all(baseline_call_fields):
+        optional_metrics["tool_execution_success_rate"] = paired_tool_success_rate(
+            baseline, candidate, ids, rng, bootstrap_samples)
+    result["paired_auxiliary_metrics"] = optional_metrics
+    return result
 
 
 def main():
