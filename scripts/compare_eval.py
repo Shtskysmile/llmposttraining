@@ -9,15 +9,18 @@ import sys
 from pathlib import Path
 
 
-def audit_rollout_if_configured(path):
+def audit_run_if_configured(path):
     path = Path(path)
     config_path = path.with_suffix(".run_config.json")
     if not config_path.is_file():
         return
     config = json.loads(config_path.read_text(encoding="utf-8"))
-    if "max_total_tokens_per_question" not in config:
+    if "max_total_tokens_per_question" in config:
+        audit_script = Path(__file__).with_name("audit_rollout_run.py")
+    elif {"max_turn_tokens", "max_total_tokens", "manifest"} <= config.keys():
+        audit_script = Path(__file__).with_name("audit_math500_run.py")
+    else:
         return
-    audit_script = Path(__file__).with_name("audit_rollout_run.py")
     subprocess.run(
         [sys.executable, str(audit_script), "--input", str(path), "--require-complete"],
         check=True,
@@ -25,7 +28,7 @@ def audit_rollout_if_configured(path):
 
 
 def read_run(path):
-    audit_rollout_if_configured(path)
+    audit_run_if_configured(path)
     rows = [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
     indexed = {row["id"]: row for row in rows}
     if len(indexed) != len(rows):

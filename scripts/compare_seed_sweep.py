@@ -42,6 +42,12 @@ def read_run(path):
             [sys.executable, str(audit_script), "--input", str(path), "--require-complete"],
             check=True,
         )
+    elif {"max_turn_tokens", "max_total_tokens", "manifest"} <= config.keys():
+        audit_script = Path(__file__).with_name("audit_math500_run.py")
+        subprocess.run(
+            [sys.executable, str(audit_script), "--input", str(path), "--require-complete"],
+            check=True,
+        )
     rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()
             if line.strip()]
     indexed = {row["id"]: int(row["correct"]) for row in rows}
