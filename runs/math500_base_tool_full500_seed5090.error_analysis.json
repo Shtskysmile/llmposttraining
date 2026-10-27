@@ -1,0 +1,214 @@
+{
+  "input": "runs/math500_base_tool_full500_seed5090.jsonl",
+  "n": 500,
+  "accuracy": 0.572,
+  "by_level": {
+    "1": {
+      "n": 43,
+      "correct": 36,
+      "accuracy": 0.8372093023255814,
+      "wilson_95_ci": [
+        0.7002759410625283,
+        0.91883372652938
+      ],
+      "mean_generated_tokens": 442.3953488372093,
+      "mean_tool_calls": 1.069767441860465
+    },
+    "2": {
+      "n": 90,
+      "correct": 56,
+      "accuracy": 0.6222222222222222,
+      "wilson_95_ci": [
+        0.5189976405818348,
+        0.715440317613552
+      ],
+      "mean_generated_tokens": 549.0,
+      "mean_tool_calls": 1.011111111111111
+    },
+    "3": {
+      "n": 105,
+      "correct": 68,
+      "accuracy": 0.6476190476190476,
+      "wilson_95_ci": [
+        0.5525114869310618,
+        0.7323064522612962
+      ],
+      "mean_generated_tokens": 604.7333333333333,
+      "mean_tool_calls": 0.9619047619047619
+    },
+    "4": {
+      "n": 128,
+      "correct": 80,
+      "accuracy": 0.625,
+      "wilson_95_ci": [
+        0.5386400519080884,
+        0.7040757090235344
+      ],
+      "mean_generated_tokens": 654.7734375,
+      "mean_tool_calls": 0.8046875
+    },
+    "5": {
+      "n": 134,
+      "correct": 46,
+      "accuracy": 0.34328358208955223,
+      "wilson_95_ci": [
+        0.2682672592868976,
+        0.42703486273551866
+      ],
+      "mean_generated_tokens": 743.2089552238806,
+      "mean_tool_calls": 0.6567164179104478
+    }
+  },
+  "by_subject": {
+    "Algebra": {
+      "n": 124,
+      "correct": 91,
+      "accuracy": 0.7338709677419355,
+      "wilson_95_ci": [
+        0.6499148550667715,
+        0.8037720829190407
+      ],
+      "mean_generated_tokens": 597.3790322580645,
+      "mean_tool_calls": 1.0161290322580645
+    },
+    "Counting & Probability": {
+      "n": 38,
+      "correct": 25,
+      "accuracy": 0.6578947368421053,
+      "wilson_95_ci": [
+        0.4989210355178308,
+        0.7878758482004058
+      ],
+      "mean_generated_tokens": 608.2894736842105,
+      "mean_tool_calls": 1.0263157894736843
+    },
+    "Geometry": {
+      "n": 41,
+      "correct": 21,
+      "accuracy": 0.5121951219512195,
+      "wilson_95_ci": [
+        0.3648450865154381,
+        0.6574557044556734
+      ],
+      "mean_generated_tokens": 620.9268292682926,
+      "mean_tool_calls": 0.8048780487804879
+    },
+    "Intermediate Algebra": {
+      "n": 97,
+      "correct": 36,
+      "accuracy": 0.3711340206185567,
+      "wilson_95_ci": [
+        0.2816237546594088,
+        0.4704623387751138
+      ],
+      "mean_generated_tokens": 744.2989690721649,
+      "mean_tool_calls": 0.6288659793814433
+    },
+    "Number Theory": {
+      "n": 62,
+      "correct": 44,
+      "accuracy": 0.7096774193548387,
+      "wilson_95_ci": [
+        0.587123542650136,
+        0.8077644271138047
+      ],
+      "mean_generated_tokens": 591.3064516129032,
+      "mean_tool_calls": 0.8387096774193549
+    },
+    "Prealgebra": {
+      "n": 82,
+      "correct": 60,
+      "accuracy": 0.7317073170731707,
+      "wilson_95_ci": [
+        0.6270377451631879,
+        0.8156387950779851
+      ],
+      "mean_generated_tokens": 530.6951219512196,
+      "mean_tool_calls": 1.0975609756097562
+    },
+    "Precalculus": {
+      "n": 56,
+      "correct": 9,
+      "accuracy": 0.16071428571428573,
+      "wilson_95_ci": [
+        0.08692667607595139,
+        0.2780620666974952
+      ],
+      "mean_generated_tokens": 719.7857142857143,
+      "mean_tool_calls": 0.5
+    }
+  },
+  "by_truncated": {
+    "False": {
+      "n": 332,
+      "correct": 246,
+      "accuracy": 0.7409638554216867,
+      "wilson_95_ci": [
+        0.6912712420770644,
+        0.7851440300630679
+      ],
+      "mean_generated_tokens": 516.3283132530121,
+      "mean_tool_calls": 0.9668674698795181
+    },
+    "True": {
+      "n": 168,
+      "correct": 40,
+      "accuracy": 0.23809523809523808,
+      "wilson_95_ci": [
+        0.18000046417619395,
+        0.3078996001975465
+      ],
+      "mean_generated_tokens": 856.6071428571429,
+      "mean_tool_calls": 0.6428571428571429
+    }
+  },
+  "by_prediction_parseable": {
+    "False": {
+      "n": 11,
+      "correct": 0,
+      "accuracy": 0.0,
+      "wilson_95_ci": [
+        0.0,
+        0.2588329669680317
+      ],
+      "mean_generated_tokens": 791.2727272727273,
+      "mean_tool_calls": 0.09090909090909091
+    },
+    "True": {
+      "n": 489,
+      "correct": 286,
+      "accuracy": 0.5848670756646217,
+      "wilson_95_ci": [
+        0.5406978053018014,
+        0.6277133510944326
+      ],
+      "mean_generated_tokens": 627.0490797546013,
+      "mean_tool_calls": 0.8752556237218814
+    }
+  },
+  "by_any_successful_tool_call": {
+    "False": {
+      "n": 303,
+      "correct": 134,
+      "accuracy": 0.44224422442244227,
+      "wilson_95_ci": [
+        0.3873920998980731,
+        0.49854247969062393
+      ],
+      "mean_generated_tokens": 726.3366336633663,
+      "mean_tool_calls": 0.7326732673267327
+    },
+    "True": {
+      "n": 197,
+      "correct": 152,
+      "accuracy": 0.7715736040609137,
+      "wilson_95_ci": [
+        0.708086545624387,
+        0.8246719825614035
+      ],
+      "mean_generated_tokens": 483.507614213198,
+      "mean_tool_calls": 1.0507614213197969
+    }
+  },
+  "interpretation_scope": "Descriptive question subgroups only. Truncation, parseability, tool use, and correctness are associated outcomes; these summaries do not identify causal effects. Wilson intervals describe within-run question sampling and exclude training-seed variation."
+}
