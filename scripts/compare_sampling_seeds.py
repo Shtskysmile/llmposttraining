@@ -38,8 +38,11 @@ def load_run(path):
 def value(row, metric):
     if metric == "sample_accuracy":
         return statistics.mean(row["sample_correct"])
-    key = "pass_at_k" if metric == "pass_at_k" else "majority_vote_correct"
-    return int(row[key])
+    if metric == "pass_at_k":
+        return int(row["pass_at_k"])
+    if metric == "majority_vote_coverage":
+        return int(not row["majority_vote_no_consensus"])
+    return int(row["majority_vote_correct"])
 
 
 def exact_mcnemar(candidate_only, baseline_only):
@@ -105,7 +108,8 @@ def main():
 
     rng = random.Random(args.bootstrap_seed)
     id_to_index = {question_id: index for index, question_id in enumerate(ids)}
-    for metric in ("sample_accuracy", "pass_at_k", "majority_vote_accuracy"):
+    for metric in ("sample_accuracy", "pass_at_k", "majority_vote_accuracy",
+                   "majority_vote_coverage"):
         differences = {}
         per_seed = {}
         for seed in seeds:
