@@ -4,10 +4,28 @@ import argparse
 import json
 import math
 import random
+import subprocess
+import sys
 from pathlib import Path
 
 
+def audit_rollout_if_configured(path):
+    path = Path(path)
+    config_path = path.with_suffix(".run_config.json")
+    if not config_path.is_file():
+        return
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    if "max_total_tokens_per_question" not in config:
+        return
+    audit_script = Path(__file__).with_name("audit_rollout_run.py")
+    subprocess.run(
+        [sys.executable, str(audit_script), "--input", str(path), "--require-complete"],
+        check=True,
+    )
+
+
 def read_run(path):
+    audit_rollout_if_configured(path)
     rows = [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
     indexed = {row["id"]: row for row in rows}
     if len(indexed) != len(rows):
@@ -103,6 +121,18 @@ def main():
     if baseline.keys() != candidate.keys():
         raise SystemExit("paired comparison requires identical question id sets")
     ids = sorted(baseline)
+    for question_id in ids:
+        for field in ("answer", "kind", "instance_key"):
+            in_baseline = field in baseline[question_id]
+            in_candidate = field in candidate[question_id]
+            if in_baseline != in_candidate:
+                raise SystemExit(
+                    f"paired source field {field!r} is missing on one run for {question_id}"
+                )
+            if in_baseline and baseline[question_id][field] != candidate[question_id][field]:
+                raise SystemExit(
+                    f"paired source field {field!r} differs for {question_id}"
+                )
     differences = [int(candidate[key]["correct"]) - int(baseline[key]["correct"])
                   for key in ids]
     baseline_only = sum(value == -1 for value in differences)
