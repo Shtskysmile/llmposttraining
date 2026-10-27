@@ -164,6 +164,8 @@ def main():
     parser.add_argument("--candidate", required=True)
     parser.add_argument("--seed", type=int, default=5090)
     parser.add_argument("--bootstrap-samples", type=int, default=10000)
+    parser.add_argument("--group-field", default=None,
+                        help="optional row field for paired subgroup summaries")
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
     if args.bootstrap_samples < 1:
@@ -193,10 +195,11 @@ def main():
 
     rng = random.Random(args.seed)
     metrics = {}
-    for metric in ("sample_accuracy", "pass_at_k", "majority_vote_accuracy",
-                   "majority_vote_coverage", "plurality_min2_accuracy",
-                   "plurality_min2_coverage", "generated_tokens", "tool_calls",
-                   "successful_tool_calls", "truncated_rate"):
+    metric_names = ("sample_accuracy", "pass_at_k", "majority_vote_accuracy",
+                    "majority_vote_coverage", "plurality_min2_accuracy",
+                    "plurality_min2_coverage", "generated_tokens", "tool_calls",
+                    "successful_tool_calls", "truncated_rate")
+    for metric in metric_names:
         metrics[metric] = compare_metric(
             baseline, candidate, ids, metric, rng, args.bootstrap_samples)
     metrics["tool_execution_success_rate"] = compare_tool_success_rate(
@@ -218,6 +221,27 @@ def main():
             "per model, so stochastic sampling and training-seed variation are not estimated"
         ),
     }
+    if args.group_field:
+        groups = {}
+        for question_id in ids:
+            base_group = baseline[question_id].get(args.group_field)
+            candidate_group = candidate[question_id].get(args.group_field)
+            if base_group is None or candidate_group is None:
+                raise SystemExit(f"missing group field {args.group_field!r} for {question_id}")
+            if str(base_group) != str(candidate_group):
+                raise SystemExit(f"paired group assignment differs for {question_id}")
+            groups.setdefault(str(base_group), []).append(question_id)
+        result["group_field"] = args.group_field
+        result["by_group"] = {}
+        for group, group_ids in sorted(groups.items()):
+            group_metrics = {
+                metric: compare_metric(baseline, candidate, group_ids, metric, rng,
+                                       args.bootstrap_samples)
+                for metric in metric_names
+            }
+            group_metrics["tool_execution_success_rate"] = compare_tool_success_rate(
+                baseline, candidate, group_ids, rng, args.bootstrap_samples)
+            result["by_group"][group] = {"n": len(group_ids), "metrics": group_metrics}
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
