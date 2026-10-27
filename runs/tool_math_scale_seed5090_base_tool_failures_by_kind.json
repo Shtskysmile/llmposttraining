@@ -1,0 +1,86 @@
+{
+  "input": "runs/tool_math_scale_seed5090_base_tool_test.jsonl",
+  "group_field": "kind",
+  "n_questions": 300,
+  "by_group": {
+    "conditional_probability": {
+      "questions_with_tool_events": 40,
+      "tool_calls": 40,
+      "successful_calls": 40,
+      "failed_calls": 0,
+      "execution_success_rate": 1.0,
+      "failure_counts": {},
+      "failure_examples": {}
+    },
+    "constrained_counting": {
+      "questions_with_tool_events": 91,
+      "tool_calls": 91,
+      "successful_calls": 81,
+      "failed_calls": 10,
+      "execution_success_rate": 0.8901098901098901,
+      "failure_counts": {
+        "IndexError: list index out of range": 1,
+        "disallowed syntax: IfExp": 9
+      },
+      "failure_examples": {
+        "disallowed syntax: IfExp": [
+          {
+            "id": "test-00000",
+            "code": "def count_ways(n, k, r, m):\n    if k == 0:\n        return 1 if r == 0 else 0\n    count = 0\n    for i in range(1, n + 1):\n        if i >= k:\n            count += count_ways(n - i, k - 1, (r - i) % m, m)\n    return count\n\nways = count_ways(25, 5, 9, 13)\nprint(ways)"
+          },
+          {
+            "id": "test-00009",
+            "code": "def count_ways(n, k, r, m):\n    if k == 0:\n        return 1 if n % m == r else 0\n    count = 0\n    for i in range(1, n + 1):\n        if i >= k:\n            count += count_ways(n - i, k - 1, r - i % m, m)\n    return count\n\nways = count_ways(27, 7, 4, 13)\nprint(ways)"
+          },
+          {
+            "id": "test-00018",
+            "code": "def count_ways(n, k, r):\n    if k == 0:\n        return 1 if n % r == 0 else 0\n    if n < k:\n        return 0\n    return count_ways(n-1, k-1, r) + count_ways(n-k, k, r)\n\ndef count_ways_no_consecutive(n, k, r):\n    if k == 0:\n        return 1 if n % r == 0 else 0\n    if n < k:\n        return 0\n    return count_ways(n-1, k-1, r) + count_ways(n-k-1, k, r)\n\nways = count_ways_no_consecutive(30, 7, 9) - count_ways_no_consecutive(23, 7, 9)\nprint(ways)"
+          }
+        ],
+        "IndexError: list index out of range": [
+          {
+            "id": "test-00225",
+            "code": "def count_ways(n, k, mod):\n    dp = [[0] * mod for _ in range(k + 1)]\n    dp[0][0] = 1\n    for i in range(1, n + 1):\n        for j in range(k + 1):\n            for m in range(mod):\n                if j == 0:\n                    dp[i][m] += dp[i - 1][m]\n                else:\n                    dp[i][m] += dp[i - 1][(m - i) % mod]\n    return sum(dp[n][m] for m in range(mod) if m % 2 == 0)\n\nways = count_ways(28, 6, 10)\nprint(ways)"
+          }
+        ]
+      }
+    },
+    "modular_system": {
+      "questions_with_tool_events": 81,
+      "tool_calls": 81,
+      "successful_calls": 44,
+      "failed_calls": 37,
+      "execution_success_rate": 0.5432098765432098,
+      "failure_counts": {
+        "NameError: name 'math' is not defined. Did you forget to import 'math'?": 2,
+        "disallowed import": 35
+      },
+      "failure_examples": {
+        "disallowed import": [
+          {
+            "id": "test-00005",
+            "code": "from sympy.ntheory.modular import solve_congruence\nx, mod = solve_congruence((4, 9), (10, 15))\nprint(x)"
+          },
+          {
+            "id": "test-00011",
+            "code": "from sympy.ntheory.modular import solve_congruence\n\nx, mod = solve_congruence((5, 12), (11, 18))\nprint(x)"
+          },
+          {
+            "id": "test-00038",
+            "code": "from sympy.ntheory.modular import solve_congruence\nx, mod = solve_congruence((7, 9), (4, 15))\nprint(x)"
+          }
+        ],
+        "NameError: name 'math' is not defined. Did you forget to import 'math'?": [
+          {
+            "id": "test-00014",
+            "code": "import math\n\n# Function to calculate LCM\ndef lcm(a, b):\n    return abs(a * b) // math.gcd(a, b)\n\n# LCM of 12 and 18\nlcm_12_18 = lcm(12, 18)\n\n# The smallest x that leaves a remainder of 8 when divided by both 12 and 18\nx = lcm_12_18 + 8\nprint(x)"
+          },
+          {
+            "id": "test-00113",
+            "code": "import math\n\n# Function to calculate LCM\ndef lcm(a, b):\n    return abs(a * b) // math.gcd(a, b)\n\n# LCM of 8 and 12\nlcm_8_12 = lcm(8, 12)\n\n# The smallest x that leaves a remainder of 6 when divided by both 8 and 12\nx = lcm_8_12 + 6\nprint(x)"
+          }
+        ]
+      }
+    }
+  }
+}

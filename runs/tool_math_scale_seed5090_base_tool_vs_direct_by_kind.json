@@ -1,0 +1,52 @@
+{
+  "baseline": "runs/tool_math_scale_seed5090_base_tool_test.jsonl",
+  "candidate": "runs/tool_math_scale_seed5090_base_direct_test.jsonl",
+  "group_field": "kind",
+  "n": 300,
+  "bootstrap_seed": 5090,
+  "by_group": {
+    "conditional_probability": {
+      "n": 100,
+      "baseline_accuracy": 0.39,
+      "candidate_accuracy": 0.58,
+      "paired_accuracy_difference": 0.19,
+      "bootstrap_95_percentile_ci": [
+        0.09,
+        0.3
+      ],
+      "bootstrap_samples": 10000,
+      "baseline_only_correct": 7,
+      "candidate_only_correct": 26,
+      "exact_mcnemar_two_sided_p": 0.0013187271542847157
+    },
+    "constrained_counting": {
+      "n": 100,
+      "baseline_accuracy": 0.8,
+      "candidate_accuracy": 0.12,
+      "paired_accuracy_difference": -0.68,
+      "bootstrap_95_percentile_ci": [
+        -0.77,
+        -0.59
+      ],
+      "bootstrap_samples": 10000,
+      "baseline_only_correct": 68,
+      "candidate_only_correct": 0,
+      "exact_mcnemar_two_sided_p": 6.776263578034403e-21
+    },
+    "modular_system": {
+      "n": 100,
+      "baseline_accuracy": 0.47,
+      "candidate_accuracy": 0.94,
+      "paired_accuracy_difference": 0.47,
+      "bootstrap_95_percentile_ci": [
+        0.37,
+        0.57
+      ],
+      "bootstrap_samples": 10000,
+      "baseline_only_correct": 1,
+      "candidate_only_correct": 48,
+      "exact_mcnemar_two_sided_p": 1.7763568394002505e-13
+    }
+  },
+  "interpretation_scope": "group-wise intervals estimate question-sampling uncertainty only; they do not estimate training-seed variation, and multiple group comparisons are exploratory."
+}

@@ -1,0 +1,51 @@
+{
+  "model": "/root/.cache/modelscope/Qwen2.5-Math-7B-Instruct",
+  "base_model": null,
+  "revision": null,
+  "data": "data/tool_math_scale_seed5090/test.jsonl",
+  "mode": "direct",
+  "data_sha256": "49f6e7e924097273a4acc9df67df84e1ab4025e5bd198a634fd5960bd1912ead",
+  "data_manifest": {
+    "generator": "data/generate_tool_math.py",
+    "seed": 5090,
+    "split_sizes": {
+      "train": 3000,
+      "validation": 300,
+      "test": 300
+    },
+    "families": [
+      "constrained_counting",
+      "conditional_probability",
+      "modular_system"
+    ],
+    "split_design": {
+      "counting": "test bounds and parameter ranges are disjoint from train/validation",
+      "conditional_probability": "test asks exactly-one-red; train/validation ask both-red; counts are disjoint",
+      "modular_system": "train/validation use coprime moduli; test uses consistent non-coprime moduli",
+      "duplicate_instances_rejected_across_splits": true
+    },
+    "files": {
+      "train": "56ef168bad290073d8e7f0b671390479457b0799bc6e6d2c057b22254b897e7c",
+      "validation": "173dc0e53f596c8721ebd947d9be3c135115865f85652ae8f783563e6166b002",
+      "test": "49f6e7e924097273a4acc9df67df84e1ab4025e5bd198a634fd5960bd1912ead"
+    },
+    "trajectory_files": {
+      "train_trajectories.jsonl": "9edfb7c435f29bd7baee567907072972bab7dee3e0ffca15af504dcd16d24cfa",
+      "train_trajectories_boxed.jsonl": "915743ebef29de51a0c607e5a737f880b0bb05d016ecc0c42659a743830ecf46"
+    }
+  },
+  "seed": 5090,
+  "decoding": "greedy",
+  "max_new_tokens_per_turn": 1024,
+  "max_total_tokens_per_question": 1024,
+  "max_tool_calls": 0,
+  "n": 300,
+  "accuracy": 0.5466666666666666,
+  "format_error_rate": 1.0,
+  "mean_generated_tokens": 736.87,
+  "mean_tool_calls": 0,
+  "tool_execution_success_rate": 0.0,
+  "truncated_rate": 0.18666666666666668,
+  "elapsed_seconds": 4610.5567918519955,
+  "peak_vram_gib": 14.29044771194458
+}
