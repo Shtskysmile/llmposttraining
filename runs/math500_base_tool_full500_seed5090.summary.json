@@ -1,0 +1,111 @@
+{
+  "model": "/root/.cache/modelscope/Qwen2.5-Math-7B-Instruct",
+  "adapter": null,
+  "revision": null,
+  "data": "data/external/math500.jsonl",
+  "data_sha256": "898b56bbbfa3d81e868d6fc5a1c9f025d8539f9b802c0ea37c02682b3d893543",
+  "data_manifest": {
+    "repository": "HuggingFaceH4/MATH-500",
+    "revision": "6e4ed1a2a79af7d8630a6b768ec859cb5af4d3be",
+    "source_file": "test.jsonl",
+    "source_sha256": "35dc41080a3680858b27fa7e0533d2d547825316fc5dafe5d316f4ccc5a06132",
+    "rows": 500,
+    "prompt_contains_reference_solution": false
+  },
+  "mode": "tool",
+  "max_tool_calls": 2,
+  "n": 500,
+  "gold_parse_failures": [],
+  "gold_math_answers": 449,
+  "gold_string_answers": 51,
+  "accuracy": 0.572,
+  "accuracy_by_level": {
+    "1": {
+      "n": 43,
+      "accuracy": 0.8372093023255814,
+      "prediction_parse_failure_rate": 0.0,
+      "mean_generated_tokens": 442.3953488372093
+    },
+    "2": {
+      "n": 90,
+      "accuracy": 0.6222222222222222,
+      "prediction_parse_failure_rate": 0.03333333333333333,
+      "mean_generated_tokens": 549
+    },
+    "3": {
+      "n": 105,
+      "accuracy": 0.6476190476190476,
+      "prediction_parse_failure_rate": 0.0,
+      "mean_generated_tokens": 604.7333333333333
+    },
+    "4": {
+      "n": 128,
+      "accuracy": 0.625,
+      "prediction_parse_failure_rate": 0.0234375,
+      "mean_generated_tokens": 654.7734375
+    },
+    "5": {
+      "n": 134,
+      "accuracy": 0.34328358208955223,
+      "prediction_parse_failure_rate": 0.03731343283582089,
+      "mean_generated_tokens": 743.2089552238806
+    }
+  },
+  "accuracy_by_subject": {
+    "Algebra": {
+      "n": 124,
+      "accuracy": 0.7338709677419355,
+      "prediction_parse_failure_rate": 0.0,
+      "mean_generated_tokens": 597.3790322580645
+    },
+    "Counting & Probability": {
+      "n": 38,
+      "accuracy": 0.6578947368421053,
+      "prediction_parse_failure_rate": 0.0,
+      "mean_generated_tokens": 608.2894736842105
+    },
+    "Geometry": {
+      "n": 41,
+      "accuracy": 0.5121951219512195,
+      "prediction_parse_failure_rate": 0.024390243902439025,
+      "mean_generated_tokens": 620.9268292682926
+    },
+    "Intermediate Algebra": {
+      "n": 97,
+      "accuracy": 0.3711340206185567,
+      "prediction_parse_failure_rate": 0.07216494845360824,
+      "mean_generated_tokens": 744.2989690721649
+    },
+    "Number Theory": {
+      "n": 62,
+      "accuracy": 0.7096774193548387,
+      "prediction_parse_failure_rate": 0.0,
+      "mean_generated_tokens": 591.3064516129032
+    },
+    "Prealgebra": {
+      "n": 82,
+      "accuracy": 0.7317073170731707,
+      "prediction_parse_failure_rate": 0.0,
+      "mean_generated_tokens": 530.6951219512196
+    },
+    "Precalculus": {
+      "n": 56,
+      "accuracy": 0.16071428571428573,
+      "prediction_parse_failure_rate": 0.05357142857142857,
+      "mean_generated_tokens": 719.7857142857143
+    }
+  },
+  "prediction_parse_failure_rate": 0.022,
+  "boxed_answer_rate": 0.79,
+  "mean_generated_tokens": 630.662,
+  "mean_tool_calls": 0.858,
+  "successful_tool_calls": 207,
+  "tool_execution_success_rate": 0.4825174825174825,
+  "truncated_rate": 0.336,
+  "max_turn_tokens": 768,
+  "elapsed_seconds": 6694.378528809,
+  "peak_vram_gib": 14.496447086334229,
+  "math_verify_version": "0.9.0",
+  "prompt_protocol": "Qwen2.5-Math CoT/TIR boxed-answer prompt; TIR receives the restricted Python tool",
+  "max_total_tokens_per_question": 1024
+}

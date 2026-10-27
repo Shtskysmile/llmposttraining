@@ -1,0 +1,27 @@
+{
+  "command": "env-grpo/bin/python src/evaluate_math500.py --model /root/.cache/modelscope/Qwen2.5-Math-7B-Instruct --data data/external/math500.jsonl --mode tool --max-turn-tokens 768 --max-total-tokens 1024 --max-tool-calls 2 --output runs/math500_base_tool_full500_seed5090.jsonl",
+  "working_directory": "/root/llmposttraining",
+  "started_utc_approx": "2026-10-26T22:09:34.803970+00:00",
+  "model": "/root/.cache/modelscope/Qwen2.5-Math-7B-Instruct",
+  "revision": null,
+  "adapter": null,
+  "data": "data/external/math500.jsonl",
+  "data_sha256": "898b56bbbfa3d81e868d6fc5a1c9f025d8539f9b802c0ea37c02682b3d893543",
+  "expected_rows": 500,
+  "mode": "tool",
+  "max_turn_tokens": 768,
+  "max_total_tokens": 1024,
+  "max_tool_calls": 2,
+  "decoding": "greedy",
+  "output": "runs/math500_base_tool_full500_seed5090.jsonl",
+  "pid_at_start": 97256,
+  "n": 500,
+  "manifest": {
+    "repository": "HuggingFaceH4/MATH-500",
+    "revision": "6e4ed1a2a79af7d8630a6b768ec859cb5af4d3be",
+    "source_file": "test.jsonl",
+    "source_sha256": "35dc41080a3680858b27fa7e0533d2d547825316fc5dafe5d316f4ccc5a06132",
+    "rows": 500,
+    "prompt_contains_reference_solution": false
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "baseline": "runs/math500_sft_tool_level100_seed5090.jsonl",
+  "candidate": "runs/math500_sft_tool_level100_budget2048_seed5090.jsonl",
+  "n": 100,
+  "baseline_accuracy": 0.54,
+  "candidate_accuracy": 0.54,
+  "paired_accuracy_difference": 0.0,
+  "bootstrap_95_percentile_ci": [
+    0.0,
+    0.0
+  ],
+  "bootstrap_samples": 10000,
+  "bootstrap_seed": 5090,
+  "baseline_only_correct": 0,
+  "candidate_only_correct": 0,
+  "exact_mcnemar_two_sided_p": 1.0,
+  "interpretation_scope": "question-sampling uncertainty only; excludes training-seed variation",
+  "paired_auxiliary_metrics": {
+    "generated_tokens": {
+      "baseline_mean_per_question": 484.13,
+      "candidate_mean_per_question": 551.79,
+      "paired_difference_candidate_minus_baseline": 67.66,
+      "question_bootstrap_95_percentile_ci": [
+        32.99975,
+        108.07049999999998
+      ],
+      "bootstrap_samples": 10000
+    },
+    "tool_calls": {
+      "baseline_mean_per_question": 1.09,
+      "candidate_mean_per_question": 1.2,
+      "paired_difference_candidate_minus_baseline": 0.11,
+      "question_bootstrap_95_percentile_ci": [
+        0.04,
+        0.19
+      ],
+      "bootstrap_samples": 10000
+    },
+    "successful_tool_calls": {
+      "baseline_mean_per_question": 0.49,
+      "candidate_mean_per_question": 0.5,
+      "paired_difference_candidate_minus_baseline": 0.01,
+      "question_bootstrap_95_percentile_ci": [
+        0.0,
+        0.03
+      ],
+      "bootstrap_samples": 10000
+    },
+    "truncated_rate": {
+      "baseline_mean_per_question": 0.18,
+      "candidate_mean_per_question": 0.02,
+      "paired_difference_candidate_minus_baseline": -0.16,
+      "question_bootstrap_95_percentile_ci": [
+        -0.23,
+        -0.09
+      ],
+      "bootstrap_samples": 10000
+    },
+    "tool_execution_success_rate": {
+      "baseline_rate": 0.44954128440366975,
+      "candidate_rate": 0.4166666666666667,
+      "paired_difference_candidate_minus_baseline": -0.032874617737003065,
+      "question_bootstrap_95_percentile_ci": [
+        -0.06846964791632246,
+        -0.00514857112875574
+      ],
+      "valid_bootstrap_samples": 10000,
+      "bootstrap_samples_requested": 10000,
+      "denominator": "successful tool calls / all tool calls"
+    }
+  }
+}
