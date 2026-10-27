@@ -1,0 +1,75 @@
+{
+  "model": "/root/.cache/modelscope/Qwen2.5-Math-7B-Instruct",
+  "direct_data": "runs/tool_math_scale_seed5090_test_direct_fewshot.jsonl",
+  "direct_data_sha256": "80090157372a0c068fd6f894f0d3fc61f1f43956b6b00a15fe3adfd18f500b90",
+  "tool_data": "data/tool_math_scale_seed5090/test.jsonl",
+  "tool_data_sha256": "49f6e7e924097273a4acc9df67df84e1ab4025e5bd198a634fd5960bd1912ead",
+  "n": 300,
+  "overall": {
+    "n": 300,
+    "direct_prompt_tokens": {
+      "mean": 420.76,
+      "median": 422.0,
+      "min": 410,
+      "max": 430
+    },
+    "tool_prompt_tokens": {
+      "mean": 561.76,
+      "median": 563.0,
+      "min": 551,
+      "max": 571
+    },
+    "tool_minus_direct_mean_prompt_tokens": 141.0
+  },
+  "by_kind": {
+    "conditional_probability": {
+      "n": 100,
+      "direct_prompt_tokens": {
+        "mean": 427.3,
+        "median": 430.0,
+        "min": 424,
+        "max": 430
+      },
+      "tool_prompt_tokens": {
+        "mean": 568.3,
+        "median": 571.0,
+        "min": 565,
+        "max": 571
+      },
+      "tool_minus_direct_mean_prompt_tokens": 140.99999999999994
+    },
+    "constrained_counting": {
+      "n": 100,
+      "direct_prompt_tokens": {
+        "mean": 420.55,
+        "median": 422.0,
+        "min": 414,
+        "max": 426
+      },
+      "tool_prompt_tokens": {
+        "mean": 561.55,
+        "median": 563.0,
+        "min": 555,
+        "max": 567
+      },
+      "tool_minus_direct_mean_prompt_tokens": 140.99999999999994
+    },
+    "modular_system": {
+      "n": 100,
+      "direct_prompt_tokens": {
+        "mean": 414.43,
+        "median": 413.0,
+        "min": 410,
+        "max": 423
+      },
+      "tool_prompt_tokens": {
+        "mean": 555.43,
+        "median": 554.0,
+        "min": 551,
+        "max": 564
+      },
+      "tool_minus_direct_mean_prompt_tokens": 140.99999999999994
+    }
+  },
+  "scope": "prompt context only; generated tokens, tool returns, and runtime are excluded"
+}
