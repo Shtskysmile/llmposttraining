@@ -44,6 +44,10 @@ def load_run(path):
 def value(row, metric):
     if metric == "sample_accuracy":
         return statistics.mean(row["sample_correct"])
+    if metric in ("generated_tokens", "tool_calls", "successful_tool_calls"):
+        return float(row[metric])
+    if metric == "truncated_rate":
+        return row["truncated_samples"] / len(row["samples"])
     if metric == "pass_at_k":
         return int(row["pass_at_k"])
     if metric == "majority_vote_coverage":
@@ -85,12 +89,144 @@ def quantile(values, q):
     return ordered[lower] * (upper - position) + ordered[upper] * (position - lower)
 
 
+METRICS = (
+    "sample_accuracy", "pass_at_k", "majority_vote_accuracy",
+    "majority_vote_coverage", "plurality_min2_accuracy", "plurality_min2_coverage",
+    "generated_tokens", "tool_calls", "successful_tool_calls", "truncated_rate",
+)
+BINARY_METRICS = {
+    "pass_at_k", "majority_vote_accuracy", "majority_vote_coverage",
+    "plurality_min2_accuracy", "plurality_min2_coverage",
+}
+
+
+def summarize_metric(baseline, candidate, seeds, ids, metric, rng, bootstrap_samples):
+    id_to_index = {question_id: index for index, question_id in enumerate(ids)}
+    differences = {}
+    per_seed = {}
+    for seed in seeds:
+        base_rows, candidate_rows = baseline[seed]["rows"], candidate[seed]["rows"]
+        diff = [value(candidate_rows[qid], metric) - value(base_rows[qid], metric)
+                for qid in ids]
+        differences[seed] = diff
+        base_mean = statistics.mean(value(base_rows[qid], metric) for qid in ids)
+        candidate_mean = statistics.mean(value(candidate_rows[qid], metric) for qid in ids)
+        row = {"baseline": base_mean, "candidate": candidate_mean,
+               "paired_difference": statistics.mean(diff)}
+        if metric in BINARY_METRICS:
+            baseline_only = sum(x == -1 for x in diff)
+            candidate_only = sum(x == 1 for x in diff)
+            event_name = "covered" if metric.endswith("_coverage") else "correct"
+            row.update({
+                f"baseline_only_{event_name}": baseline_only,
+                f"candidate_only_{event_name}": candidate_only,
+                "exact_mcnemar_two_sided_p": exact_mcnemar(candidate_only, baseline_only),
+            })
+        per_seed[str(seed)] = row
+
+    question_boot, seed_boot, hierarchical_boot = [], [], []
+    for _ in range(bootstrap_samples):
+        sampled_ids = [ids[rng.randrange(len(ids))] for _ in ids]
+        sampled_seeds = [seeds[rng.randrange(len(seeds))] for _ in seeds]
+        question_boot.append(statistics.mean(
+            differences[seed][id_to_index[qid]]
+            for seed in seeds for qid in sampled_ids))
+        seed_boot.append(statistics.mean(
+            differences[seed][index]
+            for seed in sampled_seeds for index in range(len(ids))))
+        hierarchical_boot.append(statistics.mean(
+            differences[seed][id_to_index[qid]]
+            for seed in sampled_seeds for qid in sampled_ids))
+
+    seed_differences = [per_seed[str(seed)]["paired_difference"] for seed in seeds]
+    return {
+        "mean_baseline": statistics.mean(per_seed[str(seed)]["baseline"] for seed in seeds),
+        "mean_candidate": statistics.mean(per_seed[str(seed)]["candidate"] for seed in seeds),
+        "mean_paired_difference": statistics.mean(seed_differences),
+        "paired_difference_sd_across_sampling_seeds": statistics.stdev(seed_differences),
+        "question_bootstrap_95_percentile_ci": [
+            quantile(question_boot, 0.025), quantile(question_boot, 0.975)],
+        "sampling_seed_bootstrap_95_percentile_ci": [
+            quantile(seed_boot, 0.025), quantile(seed_boot, 0.975)],
+        "hierarchical_bootstrap_95_percentile_ci": [
+            quantile(hierarchical_boot, 0.025), quantile(hierarchical_boot, 0.975)],
+        "per_seed": per_seed,
+    }
+
+
+def call_success_ratio(runs, seeds, ids):
+    calls = sum(runs[seed]["rows"][question_id]["tool_calls"]
+                for seed in seeds for question_id in ids)
+    successes = sum(runs[seed]["rows"][question_id]["successful_tool_calls"]
+                    for seed in seeds for question_id in ids)
+    return successes / calls if calls else None
+
+
+def summarize_tool_success(baseline, candidate, seeds, ids, rng, bootstrap_samples):
+    per_seed = {}
+    for seed in seeds:
+        base_rate = call_success_ratio(baseline, [seed], ids)
+        candidate_rate = call_success_ratio(candidate, [seed], ids)
+        per_seed[str(seed)] = {
+            "baseline_rate": base_rate,
+            "candidate_rate": candidate_rate,
+            "paired_difference": (candidate_rate - base_rate
+                                  if base_rate is not None and candidate_rate is not None else None),
+        }
+
+    baseline_rate = call_success_ratio(baseline, seeds, ids)
+    candidate_rate = call_success_ratio(candidate, seeds, ids)
+    question_boot, seed_boot, hierarchical_boot = [], [], []
+    for _ in range(bootstrap_samples):
+        sampled_ids = [ids[rng.randrange(len(ids))] for _ in ids]
+        sampled_seeds = [seeds[rng.randrange(len(seeds))] for _ in seeds]
+        for destination, selected_seeds, selected_ids in (
+            (question_boot, seeds, sampled_ids),
+            (seed_boot, sampled_seeds, ids),
+            (hierarchical_boot, sampled_seeds, sampled_ids),
+        ):
+            base = call_success_ratio(baseline, selected_seeds, selected_ids)
+            new = call_success_ratio(candidate, selected_seeds, selected_ids)
+            if base is not None and new is not None:
+                destination.append(new - base)
+
+    paired_difference = (candidate_rate - baseline_rate
+                         if baseline_rate is not None and candidate_rate is not None else None)
+    seed_differences = [row["paired_difference"] for row in per_seed.values()
+                        if row["paired_difference"] is not None]
+
+    def ci(values):
+        return [quantile(values, 0.025), quantile(values, 0.975)] if values else None
+
+    return {
+        "baseline_pooled_call_success_rate": baseline_rate,
+        "candidate_pooled_call_success_rate": candidate_rate,
+        "pooled_paired_difference": paired_difference,
+        "mean_paired_difference_across_sampling_seeds": (
+            statistics.mean(seed_differences) if seed_differences else None
+        ),
+        "question_bootstrap_95_percentile_ci": ci(question_boot),
+        "sampling_seed_bootstrap_95_percentile_ci": ci(seed_boot),
+        "hierarchical_bootstrap_95_percentile_ci": ci(hierarchical_boot),
+        "valid_bootstrap_samples": {
+            "question": len(question_boot),
+            "sampling_seed": len(seed_boot),
+            "hierarchical": len(hierarchical_boot),
+        },
+        "bootstrap_samples_requested": bootstrap_samples,
+        "denominator": "successful tool calls / all tool calls",
+        "per_seed": per_seed,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline", action="append", required=True)
     parser.add_argument("--candidate", action="append", required=True)
     parser.add_argument("--bootstrap-seed", type=int, default=5090)
     parser.add_argument("--bootstrap-samples", type=int, default=10000)
+    parser.add_argument("--group-field", default=None,
+                        help="optional row field for paired subgroup summaries; defaults to kind when present")
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
     if len(args.baseline) != len(args.candidate) or len(args.baseline) < 2:
@@ -129,60 +265,49 @@ def main():
                 raise SystemExit(f"sampling setting {key} differs across seeds")
 
     rng = random.Random(args.bootstrap_seed)
-    id_to_index = {question_id: index for index, question_id in enumerate(ids)}
-    for metric in ("sample_accuracy", "pass_at_k", "majority_vote_accuracy",
-                   "majority_vote_coverage", "plurality_min2_accuracy",
-                   "plurality_min2_coverage"):
-        differences = {}
-        per_seed = {}
-        for seed in seeds:
-            base_rows, candidate_rows = baseline[seed]["rows"], candidate[seed]["rows"]
-            diff = [value(candidate_rows[qid], metric) - value(base_rows[qid], metric)
-                    for qid in ids]
-            differences[seed] = diff
-            base_mean = statistics.mean(value(base_rows[qid], metric) for qid in ids)
-            candidate_mean = statistics.mean(value(candidate_rows[qid], metric) for qid in ids)
-            row = {"baseline": base_mean, "candidate": candidate_mean,
-                   "paired_difference": statistics.mean(diff)}
-            if metric != "sample_accuracy":
-                baseline_only = sum(x == -1 for x in diff)
-                candidate_only = sum(x == 1 for x in diff)
-                event_name = "covered" if metric.endswith("_coverage") else "correct"
-                row.update({
-                    f"baseline_only_{event_name}": baseline_only,
-                    f"candidate_only_{event_name}": candidate_only,
-                    "exact_mcnemar_two_sided_p": exact_mcnemar(candidate_only, baseline_only),
-                })
-            per_seed[str(seed)] = row
+    metrics = {
+        metric: summarize_metric(baseline, candidate, seeds, ids, metric, rng,
+                                 args.bootstrap_samples)
+        for metric in METRICS
+    }
+    metrics["tool_execution_success_rate"] = summarize_tool_success(
+        baseline, candidate, seeds, ids, rng, args.bootstrap_samples)
 
-        question_boot, seed_boot, hierarchical_boot = [], [], []
-        for _ in range(args.bootstrap_samples):
-            sampled_ids = [ids[rng.randrange(len(ids))] for _ in ids]
-            sampled_seeds = [seeds[rng.randrange(len(seeds))] for _ in seeds]
-            question_boot.append(statistics.mean(
-                differences[seed][id_to_index[qid]]
-                for seed in seeds for qid in sampled_ids))
-            seed_boot.append(statistics.mean(
-                differences[seed][index]
-                for seed in sampled_seeds for index in range(len(ids))))
-            hierarchical_boot.append(statistics.mean(
-                differences[seed][id_to_index[qid]]
-                for seed in sampled_seeds for qid in sampled_ids))
-
-        seed_differences = [per_seed[str(seed)]["paired_difference"] for seed in seeds]
-        metrics[metric] = {
-            "mean_baseline": statistics.mean(per_seed[str(seed)]["baseline"] for seed in seeds),
-            "mean_candidate": statistics.mean(per_seed[str(seed)]["candidate"] for seed in seeds),
-            "mean_paired_difference": statistics.mean(seed_differences),
-            "paired_difference_sd_across_sampling_seeds": statistics.stdev(seed_differences),
-            "question_bootstrap_95_percentile_ci": [
-                quantile(question_boot, 0.025), quantile(question_boot, 0.975)],
-            "sampling_seed_bootstrap_95_percentile_ci": [
-                quantile(seed_boot, 0.025), quantile(seed_boot, 0.975)],
-            "hierarchical_bootstrap_95_percentile_ci": [
-                quantile(hierarchical_boot, 0.025), quantile(hierarchical_boot, 0.975)],
-            "per_seed": per_seed,
+    group_field = args.group_field
+    if group_field is None and all(
+        "kind" in baseline[seeds[0]]["rows"][question_id] for question_id in ids
+    ):
+        group_field = "kind"
+    groups = {}
+    if group_field:
+        for question_id in ids:
+            expected_group = None
+            for seed in seeds:
+                base_group = baseline[seed]["rows"][question_id].get(group_field)
+                candidate_group = candidate[seed]["rows"][question_id].get(group_field)
+                if base_group is None or candidate_group is None:
+                    raise SystemExit(f"missing group field {group_field!r} for {question_id}")
+                if str(base_group) != str(candidate_group):
+                    raise SystemExit(f"paired group assignment differs at seed {seed} for {question_id}")
+                if expected_group is None:
+                    expected_group = str(base_group)
+                elif str(base_group) != expected_group:
+                    raise SystemExit(f"group assignment differs across sampling seeds for {question_id}")
+            groups.setdefault(expected_group, []).append(question_id)
+    by_group = {
+        group: {
+            "n_questions": len(group_ids),
+            "metrics": {
+                metric: summarize_metric(baseline, candidate, seeds, group_ids, metric,
+                                         rng, args.bootstrap_samples)
+                for metric in METRICS
+            } | {
+                "tool_execution_success_rate": summarize_tool_success(
+                    baseline, candidate, seeds, group_ids, rng, args.bootstrap_samples)
+            },
         }
+        for group, group_ids in sorted(groups.items())
+    }
 
     result = {
         "baseline_runs": args.baseline,
@@ -192,6 +317,8 @@ def main():
         "sampling_seeds": seeds,
         "bootstrap_seed": args.bootstrap_seed,
         "bootstrap_samples": args.bootstrap_samples,
+        "group_field": group_field,
+        "by_group": by_group,
         "additional_voting_policy": {
             "name": "unique plurality with at least two votes",
             "minimum_votes": 2,

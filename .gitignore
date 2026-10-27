@@ -25,6 +25,8 @@ runs/**/rng_state.pth
 runs/**/trainer_state.json
 runs/**/*.safetensors
 runs/**/*.bin
+runs/**/adapter_config.json
+runs/**/reference/
 
 # Public benchmark copies are fetched on demand; retain only their manifests/results.
 /data/external/*.jsonl
