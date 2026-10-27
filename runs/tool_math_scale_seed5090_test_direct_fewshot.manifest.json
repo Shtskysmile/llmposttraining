@@ -1,0 +1,22 @@
+{
+  "generator": "scripts/build_direct_fewshot_data.py",
+  "source": "data/tool_math_scale_seed5090/test.jsonl",
+  "source_sha256": "49f6e7e924097273a4acc9df67df84e1ab4025e5bd198a634fd5960bd1912ead",
+  "output_sha256": "80090157372a0c068fd6f894f0d3fc61f1f43956b6b00a15fe3adfd18f500b90",
+  "n": 300,
+  "prompt_protocol": "direct reasoning; same three example questions as tool demonstrations",
+  "examples": [
+    {
+      "question": "From 1 through 8, choose 2 numbers, no two consecutive, with sum congruent to 1 modulo 3. How many choices?",
+      "answer": "7"
+    },
+    {
+      "question": "A bag has 3 red and 2 blue balls. Two are drawn without replacement. Given at least one is red, what is the probability exactly one is red?",
+      "answer": "2/3"
+    },
+    {
+      "question": "Find the least nonnegative x with x congruent to 2 modulo 3 and x congruent to 3 modulo 5.",
+      "answer": "8"
+    }
+  ]
+}
