@@ -4,6 +4,7 @@ import argparse
 from collections import Counter
 import hashlib
 import json
+import math
 from pathlib import Path
 import statistics
 import sys
@@ -106,6 +107,10 @@ def main():
         correct = row.get("sample_correct", [])
         require(len(samples) == sample_count and len(correct) == sample_count,
                 f"row {index}: incomplete sample group")
+        elapsed = row.get("elapsed_seconds")
+        require(isinstance(elapsed, (int, float)) and not isinstance(elapsed, bool) and
+                math.isfinite(elapsed) and elapsed >= 0,
+                f"row {index}: elapsed_seconds must be finite and non-negative")
         completions = [sample.get("completion", "") for sample in samples]
         recomputed = [int(score(completion, row["answer"])) for completion in completions]
         require(correct == recomputed, f"row {index}: sample correctness labels do not match verifier")
@@ -188,6 +193,9 @@ def main():
         require_close(summary.get("mean_generated_tokens_per_question"),
                       statistics.mean(row["generated_tokens"] for row in rows),
                       "summary generated-token mean mismatch")
+        require_close(summary.get("mean_question_elapsed_seconds"),
+                      statistics.mean(row["elapsed_seconds"] for row in rows),
+                      "summary question-latency mean mismatch")
         require_close(summary.get("mean_tool_calls_per_question"),
                       statistics.mean(row["tool_calls"] for row in rows),
                       "summary tool-call mean mismatch")
@@ -218,6 +226,8 @@ def main():
             row["majority_vote_correct"] for row in rows) if rows else None),
         "rows_with_truncation": sum(row["truncated_samples"] > 0 for row in rows),
         "total_generated_tokens": sum(row["generated_tokens"] for row in rows),
+        "mean_question_elapsed_seconds": (statistics.mean(
+            row["elapsed_seconds"] for row in rows) if rows else None),
     }
     print(json.dumps(report, indent=2))
 

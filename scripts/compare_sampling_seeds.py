@@ -50,7 +50,8 @@ def load_run(path):
 def value(row, metric):
     if metric == "sample_accuracy":
         return statistics.mean(row["sample_correct"])
-    if metric in ("generated_tokens", "tool_calls", "successful_tool_calls"):
+    if metric in ("generated_tokens", "tool_calls", "successful_tool_calls",
+                  "elapsed_seconds"):
         return float(row[metric])
     if metric == "truncated_rate":
         return row["truncated_samples"] / len(row["samples"])
@@ -99,6 +100,7 @@ METRICS = (
     "sample_accuracy", "pass_at_k", "majority_vote_accuracy",
     "majority_vote_coverage", "plurality_min2_accuracy", "plurality_min2_coverage",
     "generated_tokens", "tool_calls", "successful_tool_calls", "truncated_rate",
+    "elapsed_seconds",
 )
 BINARY_METRICS = {
     "pass_at_k", "majority_vote_accuracy", "majority_vote_coverage",
