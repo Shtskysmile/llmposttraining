@@ -115,6 +115,62 @@
       "baseline_only_covered": 13,
       "candidate_only_covered": 152,
       "exact_mcnemar_two_sided_p": 3.1021113900808593e-31
+    },
+    "generated_tokens": {
+      "n": 300,
+      "baseline": 506.71,
+      "candidate": 251.55666666666667,
+      "paired_difference": -255.15333333333334,
+      "bootstrap_95_percentile_ci": [
+        -280.9234166666667,
+        -230.32
+      ],
+      "bootstrap_samples": 10000
+    },
+    "tool_calls": {
+      "n": 300,
+      "baseline": 2.3966666666666665,
+      "candidate": 3.033333333333333,
+      "paired_difference": 0.6366666666666667,
+      "bootstrap_95_percentile_ci": [
+        0.48,
+        0.7933333333333333
+      ],
+      "bootstrap_samples": 10000
+    },
+    "successful_tool_calls": {
+      "n": 300,
+      "baseline": 1.73,
+      "candidate": 3.03,
+      "paired_difference": 1.3,
+      "bootstrap_95_percentile_ci": [
+        1.1233333333333333,
+        1.48
+      ],
+      "bootstrap_samples": 10000
+    },
+    "truncated_rate": {
+      "n": 300,
+      "baseline": 0.2625,
+      "candidate": 0.0,
+      "paired_difference": -0.2625,
+      "bootstrap_95_percentile_ci": [
+        -0.2925,
+        -0.23333333333333334
+      ],
+      "bootstrap_samples": 10000
+    },
+    "tool_execution_success_rate": {
+      "baseline_rate": 0.721835883171071,
+      "candidate_rate": 0.9989010989010989,
+      "paired_difference": 0.27706521573002796,
+      "bootstrap_95_percentile_ci": [
+        0.23772326105174946,
+        0.3165305209887359
+      ],
+      "valid_bootstrap_samples": 10000,
+      "bootstrap_samples_requested": 10000,
+      "denominator": "successful tool calls / all tool calls"
     }
   },
   "interpretation_scope": "question-level paired uncertainty only; one rollout seed and one training seed per model, so stochastic sampling and training-seed variation are not estimated"

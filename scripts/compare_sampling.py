@@ -63,6 +63,17 @@ def metric_value(row, metric):
             return int(selected is not None)
         return int(selected is not None and
                    score(f"<answer>{selected}</answer>", row["answer"]))
+    if metric in ("generated_tokens", "tool_calls", "successful_tool_calls"):
+        value = row.get(metric)
+        if not isinstance(value, (int, float)) or value < 0:
+            raise SystemExit(f"{metric} requires a nonnegative numeric row field")
+        return float(value)
+    if metric == "truncated_rate":
+        samples = row.get("samples", [])
+        count = row.get("truncated_samples")
+        if not samples or not isinstance(count, int) or not 0 <= count <= len(samples):
+            raise SystemExit("truncated_rate requires a valid truncated_samples count")
+        return count / len(samples)
     field = "pass_at_k" if metric == "pass_at_k" else "majority_vote_correct"
     value = row.get(field)
     if value not in (0, 1, False, True):
@@ -103,7 +114,8 @@ def compare_metric(baseline, candidate, ids, metric, rng, bootstrap_samples):
         "bootstrap_95_percentile_ci": [quantile(boot, 0.025), quantile(boot, 0.975)],
         "bootstrap_samples": bootstrap_samples,
     }
-    if metric != "sample_accuracy":
+    if metric in ("pass_at_k", "majority_vote_accuracy", "majority_vote_coverage",
+                  "plurality_min2_accuracy", "plurality_min2_coverage"):
         baseline_only = sum(value == -1 for value in differences)
         candidate_only = sum(value == 1 for value in differences)
         event_name = "covered" if metric.endswith("coverage") else "correct"
@@ -113,6 +125,37 @@ def compare_metric(baseline, candidate, ids, metric, rng, bootstrap_samples):
             "exact_mcnemar_two_sided_p": exact_mcnemar(candidate_only, baseline_only),
         })
     return result
+
+
+def tool_success_rate(rows, ids):
+    calls = sum(rows[question_id]["tool_calls"] for question_id in ids)
+    successes = sum(rows[question_id]["successful_tool_calls"] for question_id in ids)
+    return successes / calls if calls else None
+
+
+def compare_tool_success_rate(baseline, candidate, ids, rng, bootstrap_samples):
+    baseline_rate = tool_success_rate(baseline, ids)
+    candidate_rate = tool_success_rate(candidate, ids)
+    bootstrap_differences = []
+    for _ in range(bootstrap_samples):
+        sampled_ids = [ids[rng.randrange(len(ids))] for _ in ids]
+        old_rate = tool_success_rate(baseline, sampled_ids)
+        new_rate = tool_success_rate(candidate, sampled_ids)
+        if old_rate is not None and new_rate is not None:
+            bootstrap_differences.append(new_rate - old_rate)
+    return {
+        "baseline_rate": baseline_rate,
+        "candidate_rate": candidate_rate,
+        "paired_difference": (candidate_rate - baseline_rate
+                              if baseline_rate is not None and candidate_rate is not None else None),
+        "bootstrap_95_percentile_ci": (
+            [quantile(bootstrap_differences, 0.025),
+             quantile(bootstrap_differences, 0.975)] if bootstrap_differences else None
+        ),
+        "valid_bootstrap_samples": len(bootstrap_differences),
+        "bootstrap_samples_requested": bootstrap_samples,
+        "denominator": "successful tool calls / all tool calls",
+    }
 
 
 def main():
@@ -152,9 +195,12 @@ def main():
     metrics = {}
     for metric in ("sample_accuracy", "pass_at_k", "majority_vote_accuracy",
                    "majority_vote_coverage", "plurality_min2_accuracy",
-                   "plurality_min2_coverage"):
+                   "plurality_min2_coverage", "generated_tokens", "tool_calls",
+                   "successful_tool_calls", "truncated_rate"):
         metrics[metric] = compare_metric(
             baseline, candidate, ids, metric, rng, args.bootstrap_samples)
+    metrics["tool_execution_success_rate"] = compare_tool_success_rate(
+        baseline, candidate, ids, rng, args.bootstrap_samples)
     result = {
         "baseline": args.baseline,
         "candidate": args.candidate,
