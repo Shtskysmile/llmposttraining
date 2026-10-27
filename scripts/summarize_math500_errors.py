@@ -46,6 +46,9 @@ def summarize(rows):
         "by_level": group_by(lambda row: row["level"]),
         "by_subject": group_by(lambda row: row["subject"]),
         "by_truncated": group_by(lambda row: bool(row["truncated"])),
+        "by_level_and_truncated": group_by(
+            lambda row: f"level={row['level']},truncated={str(bool(row['truncated'])).lower()}"
+        ),
         "by_prediction_parseable": group_by(lambda row: bool(row["prediction_parseable"])),
         "by_any_successful_tool_call": group_by(lambda row: row["successful_tool_calls"] > 0),
         "interpretation_scope": (
