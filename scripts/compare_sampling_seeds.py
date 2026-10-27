@@ -6,6 +6,7 @@ import json
 import math
 import random
 import statistics
+import subprocess
 import sys
 from pathlib import Path
 
@@ -23,6 +24,11 @@ PAIRING_KEYS = (
 
 def load_run(path):
     path = Path(path)
+    audit_script = Path(__file__).with_name("audit_sampling_run.py")
+    subprocess.run(
+        [sys.executable, str(audit_script), "--input", str(path), "--require-complete"],
+        check=True,
+    )
     config_path = path.with_suffix(".run_config.json")
     if not config_path.is_file():
         raise SystemExit(f"missing run config: {config_path}")
