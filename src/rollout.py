@@ -72,6 +72,67 @@ def generate_one(model, tokenizer, prompt, mode, max_new_tokens, max_tool_calls,
             "generated_tokens": tokens, "truncated": truncated}
 
 
+def load_resume_prefix(output, config_path, run_config, rows, args):
+    if not output.is_file() or not config_path.is_file():
+        raise SystemExit("--resume requires an existing JSONL output and .run_config.json")
+    saved_config = json.loads(config_path.read_text(encoding="utf-8"))
+    mismatches = [key for key, value in run_config.items()
+                  if saved_config.get(key) != value]
+    if mismatches:
+        raise SystemExit("resume configuration mismatch for: " + ", ".join(mismatches))
+
+    raw_output = output.read_bytes()
+    if raw_output and not raw_output.endswith(b"\n"):
+        last_newline = raw_output.rfind(b"\n")
+        trailing = raw_output[last_newline + 1:]
+        try:
+            json.loads(trailing)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            raw_output = raw_output[:last_newline + 1] if last_newline >= 0 else b""
+        else:
+            raw_output += b"\n"
+        output.write_bytes(raw_output)
+
+    try:
+        records = [json.loads(line) for line in raw_output.decode("utf-8").splitlines()
+                   if line.strip()]
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise SystemExit(f"resume output contains invalid JSON: {exc}") from exc
+    row_ids = [row["id"] for row in rows]
+    completed_ids = [record.get("id") for record in records]
+    if len(set(completed_ids)) != len(completed_ids):
+        raise SystemExit("resume output contains duplicate IDs")
+    if completed_ids != row_ids[:len(completed_ids)]:
+        raise SystemExit("resume output must contain a prefix of source IDs in order")
+
+    for index, (record, source) in enumerate(zip(records, rows)):
+        for key, expected in source.items():
+            if record.get(key) != expected:
+                raise SystemExit(
+                    f"resume row {index} ({record.get('id')}) differs from source field {key!r}"
+                )
+        completion = record.get("completion")
+        if not isinstance(completion, str):
+            raise SystemExit(f"resume row {index} has no completion text")
+        if record.get("correct") != score(completion, source["answer"]):
+            raise SystemExit(f"resume row {index} has an incorrect correctness label")
+        if record.get("format_error") != format_error(completion):
+            raise SystemExit(f"resume row {index} has an incorrect format-error label")
+        if not isinstance(record.get("generated_tokens"), int) or not (
+                0 <= record["generated_tokens"] <= args.max_total_tokens):
+            raise SystemExit(f"resume row {index} has an invalid generated-token count")
+        if not isinstance(record.get("tool_calls"), int) or not (
+                0 <= record["tool_calls"] <= run_config["max_tool_calls"]):
+            raise SystemExit(f"resume row {index} exceeds the tool-call budget")
+        if not isinstance(record.get("successful_tool_calls"), int) or not (
+                0 <= record["successful_tool_calls"] <= record["tool_calls"]):
+            raise SystemExit(f"resume row {index} has an invalid successful-tool-call count")
+        if not isinstance(record.get("truncated"), bool):
+            raise SystemExit(f"resume row {index} has an invalid truncation flag")
+
+    return records, set(completed_ids)
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--model", default="Qwen/Qwen2.5-Math-7B-Instruct")
@@ -85,21 +146,21 @@ def main():
     p.add_argument("--max-tool-calls", type=int, default=2)
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--seed", type=int, default=5090)
+    p.add_argument("--resume", action="store_true",
+                   help="resume a prefix-complete JSONL run with a matching run config")
     p.add_argument("--output", default=None)
     args = p.parse_args()
     if not torch.cuda.is_available():
         raise SystemExit("CUDA is unavailable; rollout evaluation requires a GPU.")
     random.seed(args.seed); torch.manual_seed(args.seed); torch.cuda.manual_seed_all(args.seed)
-    model_id = args.base_model or args.model
-    tokenizer = AutoTokenizer.from_pretrained(model_id, revision=args.revision)
-    model = AutoModelForCausalLM.from_pretrained(model_id, revision=args.revision,
-        torch_dtype=torch.bfloat16, device_map="cuda", attn_implementation="sdpa")
-    if args.base_model:
-        from peft import PeftModel
-        model = PeftModel.from_pretrained(model, args.model)
     rows = load_rows(args.data)
-    if args.limit:
+    if args.limit is not None:
         rows = rows[:args.limit]
+    if not rows:
+        p.error("evaluation dataset is empty")
+    row_ids = [row["id"] for row in rows]
+    if len(set(row_ids)) != len(row_ids):
+        p.error("evaluation dataset contains duplicate IDs")
     output = Path(args.output or f"runs/tool_math_{args.mode}.jsonl")
     output.parent.mkdir(parents=True, exist_ok=True)
     data_path = Path(args.data)
@@ -119,12 +180,27 @@ def main():
         "max_tool_calls": args.max_tool_calls if args.mode == "tool" else 0,
         "gpu": torch.cuda.get_device_name(0),
     }
-    output.with_suffix(".run_config.json").write_text(
-        json.dumps(run_config, indent=2) + "\n", encoding="utf-8")
-    records = []
+    config_path = output.with_suffix(".run_config.json")
+    if args.resume:
+        records, completed_ids = load_resume_prefix(
+            output, config_path, run_config, rows, args)
+    else:
+        config_path.write_text(json.dumps(run_config, indent=2) + "\n", encoding="utf-8")
+        output.touch()
+        records, completed_ids = [], set()
+
+    model_id = args.base_model or args.model
+    tokenizer = AutoTokenizer.from_pretrained(model_id, revision=args.revision)
+    model = AutoModelForCausalLM.from_pretrained(model_id, revision=args.revision,
+        torch_dtype=torch.bfloat16, device_map="cuda", attn_implementation="sdpa")
+    if args.base_model:
+        from peft import PeftModel
+        model = PeftModel.from_pretrained(model, args.model)
     started = time.perf_counter()
-    with output.open("w", encoding="utf-8") as handle:
+    with output.open("a" if args.resume else "w", encoding="utf-8") as handle:
         for idx, row in enumerate(rows):
+            if row["id"] in completed_ids:
+                continue
             pred = generate_one(model, tokenizer, row["prompt"], args.mode, args.max_new_tokens,
                                 args.max_tool_calls, args.max_total_tokens)
             record = {**row, **pred, "correct": score(pred["completion"], row["answer"]),
@@ -150,7 +226,11 @@ def main():
         "tool_execution_success_rate": (sum(r["successful_tool_calls"] for r in records) /
             max(1, sum(r["tool_calls"] for r in records))),
         "truncated_rate": sum(r["truncated"] for r in records) / n,
-        "elapsed_seconds": elapsed, "peak_vram_gib": torch.cuda.max_memory_allocated() / 2**30}
+        "elapsed_seconds": elapsed,
+        "elapsed_seconds_this_invocation": elapsed,
+        "elapsed_seconds_scope": "current invocation only; prior interrupted attempts are excluded",
+        "resumed_from_existing_rows": len(completed_ids),
+        "peak_vram_gib": torch.cuda.max_memory_allocated() / 2**30}
     output.with_suffix(".summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary, indent=2))
 
