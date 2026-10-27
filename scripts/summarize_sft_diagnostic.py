@@ -55,6 +55,43 @@ def validate_result(summary_path, target, learning_rate, step, split):
     source_rows = read_jsonl(data_path)
     expected_model = f"runs/sft_diagnostic_{target}_lr{learning_rate}/checkpoint-{step}"
 
+    checkpoint = Path(expected_model)
+    training_config_path = checkpoint.parent / "run_config.json"
+    trainer_state_path = checkpoint / "trainer_state.json"
+    require(checkpoint.is_dir(), f"missing training checkpoint: {checkpoint}")
+    require(training_config_path.is_file(),
+            f"missing training run config: {training_config_path}")
+    require(trainer_state_path.is_file(), f"missing Trainer state: {trainer_state_path}")
+    training_config = json.loads(training_config_path.read_text(encoding="utf-8"))
+    trainer_state = json.loads(trainer_state_path.read_text(encoding="utf-8"))
+    training_data = Path("data/seed2027/train_base_reasoning.jsonl" if target == "preserved"
+                         else "data/seed2027/train_base_correct_common.jsonl")
+    require(training_data.is_file(), f"missing expected training data: {training_data}")
+    training_data_sha = hashlib.sha256(training_data.read_bytes()).hexdigest()
+    expected_training_config = {
+        "model": "Qwen/Qwen3-1.7B",
+        "revision": REVISION,
+        "seed": 17,
+        "dataset": str(training_data),
+        "dataset_sha256": training_data_sha,
+        "target_mode": target,
+        "learning_rate": float(learning_rate),
+        "epochs": 1.0,
+        "batch_size": 4,
+        "max_steps": 32,
+        "save_steps": 4,
+    }
+    training_mismatches = [key for key, expected in expected_training_config.items()
+                           if training_config.get(key) != expected]
+    require(not training_mismatches,
+            f"training config mismatch for {checkpoint}: {', '.join(training_mismatches)}")
+    require(trainer_state.get("global_step") == step,
+            f"Trainer checkpoint step mismatch for {checkpoint}")
+    require((checkpoint / "adapter_config.json").is_file() and
+            ((checkpoint / "adapter_model.safetensors").is_file() or
+             (checkpoint / "adapter_model.bin").is_file()),
+            f"LoRA adapter weights are missing from {checkpoint}")
+
     expected_config = {
         "model": expected_model,
         "base_model": "Qwen/Qwen3-1.7B",
@@ -126,6 +163,9 @@ def validate_result(summary_path, target, learning_rate, step, split):
         "format_error_rate": sum(format_errors) / len(format_errors),
         "mean_generated_tokens": sum(lengths) / len(lengths),
         "data_sha256": expected_sha,
+        "training_config": str(training_config_path),
+        "checkpoint": str(checkpoint),
+        "training_data_sha256": training_data_sha,
         "source_jsonl": str(output_path),
         "source_summary": str(summary_path),
     }
