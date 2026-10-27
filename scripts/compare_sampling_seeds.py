@@ -244,6 +244,11 @@ def main():
             if seed is None or seed in runs:
                 raise SystemExit(f"{label} runs need unique recorded sampling seeds")
             runs[seed] = run
+        adapters = {run["config"].get("adapter") for run in runs.values()}
+        if len(adapters) != 1:
+            raise SystemExit(
+                f"{label} runs must use the same adapter across sampling seeds"
+            )
         return runs
 
     baseline = collect(args.baseline, "baseline")
