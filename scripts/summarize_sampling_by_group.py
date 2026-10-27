@@ -24,8 +24,10 @@ def summarize(rows, num_samples):
         "strict_majority_accuracy_all_questions": mean(
             [row["majority_vote_correct"] for row in rows]),
         "strict_majority_coverage": len(resolved) / n if n else 0.0,
-        "strict_majority_accuracy_when_resolved": mean(
-            [row["majority_vote_correct"] for row in resolved]),
+        "strict_majority_accuracy_when_resolved": (
+            mean([row["majority_vote_correct"] for row in resolved])
+            if resolved else None
+        ),
         "no_consensus_rate": mean([row["majority_vote_no_consensus"] for row in rows]),
         "no_parseable_vote_rate": mean(
             [row["parseable_answer_count"] == 0 for row in rows]),

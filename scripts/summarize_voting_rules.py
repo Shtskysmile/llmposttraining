@@ -22,6 +22,12 @@ def quantile(values, q):
     return ordered[lower] * (upper - position) + ordered[upper] * (position - lower)
 
 
+def percentile_interval(values):
+    if not values:
+        return None
+    return [quantile(values, 0.025), quantile(values, 0.975)]
+
+
 def summarize(records, thresholds, strict_threshold, bootstrap_samples, rng):
     n = len(records)
     parsed = []
@@ -65,7 +71,8 @@ def summarize(records, thresholds, strict_threshold, bootstrap_samples, rng):
             correct_n = sum(policy_rows[index]["correct"] for index in indices)
             boot_coverage.append(covered_n / n)
             boot_accuracy.append(correct_n / n)
-            boot_answered_accuracy.append(correct_n / covered_n if covered_n else 0.0)
+            if covered_n:
+                boot_answered_accuracy.append(correct_n / covered_n)
 
         results[str(threshold)] = {
             "min_votes_for_unique_top": threshold,
@@ -79,9 +86,10 @@ def summarize(records, thresholds, strict_threshold, bootstrap_samples, rng):
             "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
                 quantile(boot_accuracy, 0.025), quantile(boot_accuracy, 0.975)],
             "accuracy_when_answered": answered_accuracy,
-            "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
-                quantile(boot_answered_accuracy, 0.025),
-                quantile(boot_answered_accuracy, 0.975)],
+            "accuracy_when_answered_question_bootstrap_95_percentile_ci":
+                percentile_interval(boot_answered_accuracy),
+            "accuracy_when_answered_question_bootstrap_valid_replicates":
+                len(boot_answered_accuracy),
             "mean_votes_for_answered_questions": (
                 statistics.mean(row["selected_votes"] for row in policy_rows
                                 if row["covered"]) if answered else None
@@ -100,22 +108,22 @@ def summarize(records, thresholds, strict_threshold, bootstrap_samples, rng):
             policy_correct = sum(policy_rows[index]["correct"] for index in indices)
             delta_coverage.append((policy_covered - strict_covered) / n)
             delta_accuracy.append((policy_correct - strict_correct) / n)
-            strict_conditional = strict_correct / strict_covered if strict_covered else 0.0
-            policy_conditional = policy_correct / policy_covered if policy_covered else 0.0
-            delta_answered_accuracy.append(policy_conditional - strict_conditional)
+            if strict_covered and policy_covered:
+                strict_conditional = strict_correct / strict_covered
+                policy_conditional = policy_correct / policy_covered
+                delta_answered_accuracy.append(policy_conditional - strict_conditional)
         point_coverage = statistics.mean(row["covered"] for row in policy_rows) - statistics.mean(
             row["covered"] for row in strict_rows)
         point_accuracy = statistics.mean(row["correct"] for row in policy_rows) - statistics.mean(
             row["correct"] for row in strict_rows)
         point_strict_covered = sum(row["covered"] for row in strict_rows)
         point_policy_covered = sum(row["covered"] for row in policy_rows)
-        point_conditional = (
-            sum(row["correct"] for row in policy_rows) / point_policy_covered
-            if point_policy_covered else 0.0
-        ) - (
-            sum(row["correct"] for row in strict_rows) / point_strict_covered
-            if point_strict_covered else 0.0
-        )
+        point_conditional = None
+        if point_policy_covered and point_strict_covered:
+            point_conditional = (
+                sum(row["correct"] for row in policy_rows) / point_policy_covered
+                - sum(row["correct"] for row in strict_rows) / point_strict_covered
+            )
         results[str(threshold)]["paired_difference_vs_strict_majority"] = {
             "coverage": point_coverage,
             "coverage_question_bootstrap_95_percentile_ci": [
@@ -124,9 +132,10 @@ def summarize(records, thresholds, strict_threshold, bootstrap_samples, rng):
             "accuracy_all_questions_question_bootstrap_95_percentile_ci": [
                 quantile(delta_accuracy, 0.025), quantile(delta_accuracy, 0.975)],
             "accuracy_when_answered": point_conditional,
-            "accuracy_when_answered_question_bootstrap_95_percentile_ci": [
-                quantile(delta_answered_accuracy, 0.025),
-                quantile(delta_answered_accuracy, 0.975)],
+            "accuracy_when_answered_question_bootstrap_95_percentile_ci":
+                percentile_interval(delta_answered_accuracy),
+            "accuracy_when_answered_question_bootstrap_valid_replicates":
+                len(delta_answered_accuracy),
         }
     return results
 

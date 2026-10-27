@@ -14,7 +14,7 @@ from src.verifier import extract_answer, score
 
 
 PAIRING_KEYS = (
-    "data_sha256", "n", "mode", "revision", "num_samples", "max_total_tokens",
+    "data_sha256", "n", "model", "mode", "revision", "num_samples", "max_total_tokens",
     "max_new_tokens", "max_tool_calls", "temperature", "top_k", "top_p",
     "per_sample_token_budgets", "majority_vote_rule", "unparseable_answers_in_vote",
     "sampling", "seed_strategy", "gpu",
@@ -147,9 +147,10 @@ def main():
             if metric != "sample_accuracy":
                 baseline_only = sum(x == -1 for x in diff)
                 candidate_only = sum(x == 1 for x in diff)
+                event_name = "covered" if metric.endswith("_coverage") else "correct"
                 row.update({
-                    "baseline_only_correct": baseline_only,
-                    "candidate_only_correct": candidate_only,
+                    f"baseline_only_{event_name}": baseline_only,
+                    f"candidate_only_{event_name}": candidate_only,
                     "exact_mcnemar_two_sided_p": exact_mcnemar(candidate_only, baseline_only),
                 })
             per_seed[str(seed)] = row
