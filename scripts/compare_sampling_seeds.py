@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 """Paired analysis across multiple sampling seeds for multi-sample evaluations."""
 import argparse
+from collections import Counter
 import json
 import math
 import random
 import statistics
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from src.verifier import extract_answer, score
 
 
 PAIRING_KEYS = (
@@ -29,7 +34,8 @@ def load_run(path):
         raise SystemExit(f"duplicate question ids in {path}")
     if len(rows) != config.get("n"):
         raise SystemExit(f"run row count does not match config in {path}")
-    if any(len(row.get("sample_correct", [])) != config.get("num_samples")
+    if any(len(row.get("sample_correct", [])) != config.get("num_samples") or
+           len(row.get("samples", [])) != config.get("num_samples")
            for row in rows):
         raise SystemExit(f"sample count mismatch in {path}")
     return {"path": str(path), "config": config, "rows": indexed}
@@ -42,6 +48,22 @@ def value(row, metric):
         return int(row["pass_at_k"])
     if metric == "majority_vote_coverage":
         return int(not row["majority_vote_no_consensus"])
+    if metric in ("plurality_min2_accuracy", "plurality_min2_coverage"):
+        counts = Counter(
+            str(answer)
+            for sample in row["samples"]
+            if (answer := extract_answer(sample["completion"])) is not None
+        )
+        answer = None
+        if counts:
+            highest = max(counts.values())
+            winners = [candidate for candidate, count in counts.items()
+                       if count == highest]
+            if highest >= 2 and len(winners) == 1:
+                answer = winners[0]
+        if metric == "plurality_min2_coverage":
+            return int(answer is not None)
+        return int(answer is not None and score(f"<answer>{answer}</answer>", row["answer"]))
     return int(row["majority_vote_correct"])
 
 
@@ -109,7 +131,8 @@ def main():
     rng = random.Random(args.bootstrap_seed)
     id_to_index = {question_id: index for index, question_id in enumerate(ids)}
     for metric in ("sample_accuracy", "pass_at_k", "majority_vote_accuracy",
-                   "majority_vote_coverage"):
+                   "majority_vote_coverage", "plurality_min2_accuracy",
+                   "plurality_min2_coverage"):
         differences = {}
         per_seed = {}
         for seed in seeds:
@@ -168,6 +191,12 @@ def main():
         "sampling_seeds": seeds,
         "bootstrap_seed": args.bootstrap_seed,
         "bootstrap_samples": args.bootstrap_samples,
+        "additional_voting_policy": {
+            "name": "unique plurality with at least two votes",
+            "minimum_votes": 2,
+            "top_answer_ties": "abstain",
+            "unparseable_samples": "do not vote",
+        },
         "paired_configuration": {key: ref_config[key] for key in PAIRING_KEYS},
         "metrics": metrics,
         "interpretation_scope": (
