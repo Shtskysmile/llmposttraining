@@ -1,0 +1,49 @@
+# Group-size ablation: n=8 with 4 prompts per step (same 32 completions/step).
+defaults:
+  - ppo_trainer
+  - arithmetic_base
+  - _self_
+
+hydra:
+  searchpath:
+    - pkg://verl.trainer.config
+  job:
+    chdir: false
+
+custom_reward_function:
+  reward_kwargs:
+    mode: process
+    final_weight: 1.0
+    process_weight: 0.5
+    format_weight: 0.1
+    invalid_penalty: 0.05
+
+actor_rollout_ref:
+  actor:
+    # verl asserts train_batch_size >= ppo_mini_batch_size.  With n=8 and
+    # 4 prompts per step (32 completions), use a 4-completion mini-batch.
+    ppo_mini_batch_size: 4
+  rollout:
+    n: 8
+    val_kwargs:
+      n: 4
+      do_sample: true
+      temperature: 0.7
+      top_k: 20
+      top_p: 0.95
+
+data:
+  train_batch_size: 4
+
+algorithm:
+  adv_estimator: grpo
+  norm_adv_by_std_in_grpo: true
+
+trainer:
+  experiment_name: arithmetic_grpo_process_n8
+  default_local_dir: verl_impl/outputs/arithmetic_grpo_process_n8
+  rollout_data_dir: verl_impl/outputs/arithmetic_grpo_process_n8/rollout
+  validation_data_dir: verl_impl/outputs/arithmetic_grpo_process_n8/val
+
+demo:
+  output_dir: verl_impl/outputs/arithmetic_grpo_process_n8/hooks

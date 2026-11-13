@@ -1,0 +1,39 @@
+# Proposed extension: two-channel advantage.
+# A = group-normalised final-answer advantage + lambda * dense process advantage.
+defaults:
+  - ppo_trainer
+  - arithmetic_base
+  - _self_
+
+hydra:
+  searchpath:
+    - pkg://verl.trainer.config
+  job:
+    chdir: false
+
+custom_reward_function:
+  reward_kwargs:
+    mode: process
+    final_weight: 1.0
+    process_weight: 0.5
+    format_weight: 0.1
+    invalid_penalty: 0.05
+
+reward_model:
+  reward_manager: arithmetic_process
+
+algorithm:
+  adv_estimator: decomposed_grpo
+  process_adv_weight: 0.5
+  process_return_mode: cumsum
+  process_norm_by_std: true
+  final_norm_by_std: true
+
+trainer:
+  experiment_name: arithmetic_process_decomposed
+  default_local_dir: verl_impl/outputs/arithmetic_process_decomposed
+  rollout_data_dir: verl_impl/outputs/arithmetic_process_decomposed/rollout
+  validation_data_dir: verl_impl/outputs/arithmetic_process_decomposed/val
+
+demo:
+  output_dir: verl_impl/outputs/arithmetic_process_decomposed/hooks

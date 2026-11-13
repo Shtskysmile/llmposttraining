@@ -1,0 +1,32 @@
+# Answer-only reward plus a small <answer> tag bonus (format shaping ablation).
+defaults:
+  - ppo_trainer
+  - arithmetic_base
+  - _self_
+
+hydra:
+  searchpath:
+    - pkg://verl.trainer.config
+  job:
+    chdir: false
+
+custom_reward_function:
+  reward_kwargs:
+    mode: format
+    final_weight: 1.0
+    process_weight: 0.0
+    format_weight: 0.1
+    invalid_penalty: 0.0
+
+algorithm:
+  adv_estimator: grpo
+  norm_adv_by_std_in_grpo: true
+
+trainer:
+  experiment_name: arithmetic_grpo_format
+  default_local_dir: verl_impl/outputs/arithmetic_grpo_format
+  rollout_data_dir: verl_impl/outputs/arithmetic_grpo_format/rollout
+  validation_data_dir: verl_impl/outputs/arithmetic_grpo_format/val
+
+demo:
+  output_dir: verl_impl/outputs/arithmetic_grpo_format/hooks

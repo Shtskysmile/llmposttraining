@@ -1,0 +1,23 @@
+{
+  "train": {
+    "rows": 256,
+    "path": "verl_impl/data/train.parquet",
+    "kinds": [
+      "three_op_expression"
+    ]
+  },
+  "validation": {
+    "rows": 64,
+    "path": "verl_impl/data/validation.parquet",
+    "kinds": [
+      "three_op_expression"
+    ]
+  },
+  "test": {
+    "rows": 96,
+    "path": "verl_impl/data/test.parquet",
+    "kinds": [
+      "heldout_word_problem"
+    ]
+  }
+}

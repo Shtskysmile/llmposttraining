@@ -1,0 +1,37 @@
+# Ablation: token-level process rewards without reverse-cumulative propagation.
+# Only the exact step-completion tokens carry process credit.
+defaults:
+  - ppo_trainer
+  - arithmetic_base
+  - _self_
+
+hydra:
+  searchpath:
+    - pkg://verl.trainer.config
+  job:
+    chdir: false
+
+custom_reward_function:
+  reward_kwargs:
+    mode: process
+    final_weight: 1.0
+    process_weight: 0.5
+    format_weight: 0.1
+    invalid_penalty: 0.05
+
+reward_model:
+  reward_manager: arithmetic_process
+
+algorithm:
+  adv_estimator: process_grpo
+  process_return_mode: none
+  process_norm_by_std: true
+
+trainer:
+  experiment_name: arithmetic_process_dense_sparse
+  default_local_dir: verl_impl/outputs/arithmetic_process_dense_sparse
+  rollout_data_dir: verl_impl/outputs/arithmetic_process_dense_sparse/rollout
+  validation_data_dir: verl_impl/outputs/arithmetic_process_dense_sparse/val
+
+demo:
+  output_dir: verl_impl/outputs/arithmetic_process_dense_sparse/hooks

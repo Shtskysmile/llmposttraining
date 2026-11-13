@@ -1,6 +1,51 @@
 # Tiny GRPO / RLVR arithmetic experiment
 
-Small, reproducible interview project for post-training: train a Qwen3 policy with TRL GRPO and LoRA using only exact, programmatically checked integer answers. It deliberately targets a short single-GPU experiment, not a benchmark claim.
+Small, reproducible interview project for post-training: train a Qwen3 policy with reinforcement learning and LoRA using only exact, programmatically checked integer answers. It deliberately targets a short single-device experiment, not a benchmark claim.
+
+## Two implementations
+
+| implementation | stack | status |
+| --- | --- | --- |
+| **[`verl_impl/`](verl_impl/README.md)** | verl 0.5.0 + FSDP + HF rollout on Ascend 910B2 | **new primary path** |
+| `src/` | TRL `GRPOTrainer` on CUDA | kept as the reference record |
+
+The verl port adds an original **proof-carrying process reward**: a deterministic
+verifier parses the gold integer expression, accepts only grounded arithmetic
+steps the model actually proves, and turns them into token-level rewards
+(`Process-GRPO`). This gives dense signal in all-wrong groups that answer-only
+GRPO cannot learn from. It also fixes a `position_ids` bug in the shared verl
+rollout that corrupted batched Qwen3 generation on Ascend. See
+[`verl_impl/README.md`](verl_impl/README.md) for the method, configs and
+commands, [`verl_impl/RESULTS.md`](verl_impl/RESULTS.md) for the current
+results, and [`verl_impl/RELATED_WORK.md`](verl_impl/RELATED_WORK.md) for the
+literature mapping and pre-registered protocol.
+
+In the 6-step comparison, the proof-carrying process reward cuts the
+zero-variance group rate by 28–50% relative to accuracy-only reward across four
+advantage variants.  On the pre-registered **64-prompt × 4-sample** evaluation,
+Dr.GRPO + process reaches **pass@1 0.672 / mean accuracy 0.660**, versus
+0.531/0.523 for the base model and 0.531/0.578 for answer-only GRPO; it beats
+answer-only on pass@1 (McNemar p=0.035) and on mean accuracy (paired CI excludes
+zero).  Answer-only is the best best-of-4 variant (pass@4 0.875), while the
+degeneration-penalty variant has the lowest loop rate (0.4%).  Process reward
+with standard GRPO is not better than answer-only, so the algorithm–reward
+interaction matters more than the reward alone.  On the **96 held-out word
+problems**, the in-distribution winner is not the transfer winner: answer-only
+scores 63.5% vs base 59.4%, Dr.GRPO+process 61.5%, and standard GRPO+process
+54.2% (paired CI excludes zero on the negative side).
+
+An **extended algorithm wave** (RLOO, DAPO-lite, Decomposed-GRPO,
+Difficulty-GRPO, and group size 8, all with the process reward) is a negative
+result: every variant lands at 62.5–65.6% on the 32-prompt greedy screen, well
+below Dr.GRPO+process at 75.0%, and none beats it at this six-step budget.  The
+robust positive is that all of them keep the reward zero-variance rate at
+33–38% versus 46% for answer-only, so the dense-signal mechanism does not
+depend on the advantage estimator.  Full tables:
+[`verl_impl/RESULTS_FULL.md`](verl_impl/RESULTS_FULL.md) and
+[`verl_impl/RESULTS_EXTENDED.md`](verl_impl/RESULTS_EXTENDED.md).
+
+The rest of this file documents the original TRL implementation and its
+results. Everything below still reproduces with the pinned CUDA environment.
 
 For a detailed Chinese walkthrough of the datasets, verifier, and training stages, see [docs/实验流程说明.md](docs/实验流程说明.md). A compact report with hyperparameters, GPU memory, and accuracy across variants is in [docs/实验结果汇总报告.md](docs/实验结果汇总报告.md); detailed run notes and artifacts are in [RESULTS.md](RESULTS.md).
 

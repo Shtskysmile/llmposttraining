@@ -1,0 +1,153 @@
+# Shared configuration for the verl arithmetic-RLVR experiments.
+# Variant files add their own defaults [ppo_trainer, arithmetic_base, _self_].
+
+actor_rollout_ref:
+  hybrid_engine: true
+
+  model:
+    # Local Qwen3-0.6B (the machine has no 1.7B checkpoint).
+    path: /root/work/models/Qwen3-0.6B
+    enable_gradient_checkpointing: true
+
+    # Same LoRA shape as the TRL implementation and the MedQA verl demo.
+    lora_rank: 16
+    lora_alpha: 32
+    target_modules:
+      - q_proj
+      - k_proj
+      - v_proj
+      - o_proj
+      - gate_proj
+      - up_proj
+      - down_proj
+
+  actor:
+    strategy: fsdp
+    fsdp_config:
+      use_orig_params: true
+    ppo_mini_batch_size: 8
+    ppo_micro_batch_size_per_gpu: 1
+    ppo_epochs: 1
+    clip_ratio: 0.2
+    optim:
+      lr: 1.0e-5
+    use_kl_loss: true
+    kl_loss_coef: 0.001
+    loss_agg_mode: token-mean
+
+  ref:
+    log_prob_micro_batch_size_per_gpu: 8
+
+  rollout:
+    name: hf
+    mode: sync
+    n: 4
+    tensor_model_parallel_size: 1
+    # Qwen3-0.6B degenerates into digit loops at temperature 1.0; 0.7 with
+    # nucleus sampling produces clean arithmetic traces while keeping
+    # within-group diversity.
+    temperature: 0.7
+    top_p: 0.95
+    top_k: 20
+    do_sample: true
+    log_prob_micro_batch_size_per_gpu: 8
+    # 4-sample validation for pass@k reporting.
+    val_kwargs:
+      n: 4
+      do_sample: true
+      temperature: 0.7
+      top_k: 20
+      top_p: 0.95
+
+critic:
+  ppo_micro_batch_size_per_gpu: 1
+
+algorithm:
+  adv_estimator: grpo
+  use_kl_in_reward: false
+  norm_adv_by_std_in_grpo: true
+  gamma: 1.0
+  lam: 1.0
+  # Used only by process_grpo/process_rloo.
+  process_return_mode: cumsum
+  process_norm_by_std: true
+
+data:
+  # Custom RLHFDataset renders Qwen3 prompts with thinking disabled.
+  custom_cls:
+    path: verl_impl/dataset.py
+    name: ArithmeticDataset
+  train_files: verl_impl/data/train.parquet
+  val_files: verl_impl/data/validation.parquet
+  train_batch_size: 8
+  val_batch_size: 8
+  max_prompt_length: 256
+  max_response_length: 320
+  prompt_key: prompt
+  reward_fn_key: data_source
+  # Fixed order so every variant trains on the same prompts in the same order;
+  # verl 0.5.0 does not expose a global rollout seed.
+  shuffle: false
+  dataloader_num_workers: 0
+  filter_overlong_prompts: true
+  truncation: left
+
+reward_model:
+  enable: false
+  reward_manager: naive
+  reward_kwargs: {}
+
+# ---------------------------------------------------------------------------
+# Project-specific extension points
+# ---------------------------------------------------------------------------
+custom_reward_function:
+  path: verl_impl/rewards.py
+  name: compute_score
+  reward_kwargs:
+    mode: process
+    final_weight: 1.0
+    process_weight: 0.5
+    format_weight: 0.1
+    invalid_penalty: 0.05
+
+demo:
+  hooks_class: demo.hooks.DemoHooks
+  output_dir: verl_impl/outputs/_hooks
+
+custom:
+  import_modules:
+    - verl_impl.algorithms
+    - verl_impl.reward_manager
+
+ray_init:
+  num_cpus: 3
+
+trainer:
+  total_epochs: 1
+  total_training_steps: 10
+
+  nnodes: 1
+  n_gpus_per_node: 1
+
+  val_before_train: false
+  # No in-training validation; we run an explicit val_only pass afterwards so
+  # the base model and every checkpoint use the same batch size and seed.
+  test_freq: -1
+  logger: [console]
+
+  project_name: arithmetic_verl
+  experiment_name: arithmetic_grpo_process
+
+  save_freq: 10
+  max_actor_ckpt_to_keep: 1
+  resume_mode: disable
+  default_local_dir: verl_impl/outputs/arithmetic_grpo_process
+
+  # Dump every training rollout and every validation generation for offline
+  # group-variance / pass@k analysis.
+  rollout_data_dir: verl_impl/outputs/arithmetic_grpo_process/rollout
+  validation_data_dir: verl_impl/outputs/arithmetic_grpo_process/val
+
+  # Ascend NPU; verl 0.5.0 has no automatic device inference.
+  device: npu
+  use_legacy_worker_impl: enable

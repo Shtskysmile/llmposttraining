@@ -1,0 +1,40 @@
+# Proposed method: token-level process rewards + dense process_grpo advantage.
+# The reward manager places each verified step's reward on the token where the
+# step completes; process_grpo converts this to dense reverse-cumulative returns
+# and normalises them per group and per token position.
+defaults:
+  - ppo_trainer
+  - arithmetic_base
+  - _self_
+
+hydra:
+  searchpath:
+    - pkg://verl.trainer.config
+  job:
+    chdir: false
+
+custom_reward_function:
+  reward_kwargs:
+    mode: process
+    final_weight: 1.0
+    process_weight: 0.5
+    format_weight: 0.1
+    invalid_penalty: 0.05
+
+reward_model:
+  reward_manager: arithmetic_process
+
+algorithm:
+  adv_estimator: process_grpo
+  norm_adv_by_std_in_grpo: true
+  process_return_mode: cumsum
+  process_norm_by_std: true
+
+trainer:
+  experiment_name: arithmetic_process_dense
+  default_local_dir: verl_impl/outputs/arithmetic_process_dense
+  rollout_data_dir: verl_impl/outputs/arithmetic_process_dense/rollout
+  validation_data_dir: verl_impl/outputs/arithmetic_process_dense/val
+
+demo:
+  output_dir: verl_impl/outputs/arithmetic_process_dense/hooks

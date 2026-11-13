@@ -1,0 +1,36 @@
+# Process reward + degeneration penalty.
+# Qwen3-0.6B sometimes falls into digit-repetition loops; a 40-character
+# repeated-chunk penalty gives all-wrong groups a within-group signal even
+# when process coverage is zero.
+defaults:
+  - ppo_trainer
+  - arithmetic_base
+  - _self_
+
+hydra:
+  searchpath:
+    - pkg://verl.trainer.config
+  job:
+    chdir: false
+
+custom_reward_function:
+  reward_kwargs:
+    mode: process
+    final_weight: 1.0
+    process_weight: 0.5
+    format_weight: 0.1
+    invalid_penalty: 0.05
+    loop_penalty_weight: 0.2
+
+algorithm:
+  adv_estimator: grpo
+  norm_adv_by_std_in_grpo: true
+
+trainer:
+  experiment_name: arithmetic_process_loop
+  default_local_dir: verl_impl/outputs/arithmetic_process_loop
+  rollout_data_dir: verl_impl/outputs/arithmetic_process_loop/rollout
+  validation_data_dir: verl_impl/outputs/arithmetic_process_loop/val
+
+demo:
+  output_dir: verl_impl/outputs/arithmetic_process_loop/hooks

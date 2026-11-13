@@ -1,0 +1,32 @@
+# Dr.GRPO (no group-std normalisation) with the process reward.
+defaults:
+  - ppo_trainer
+  - arithmetic_base
+  - _self_
+
+hydra:
+  searchpath:
+    - pkg://verl.trainer.config
+  job:
+    chdir: false
+
+custom_reward_function:
+  reward_kwargs:
+    mode: process
+    final_weight: 1.0
+    process_weight: 0.5
+    format_weight: 0.1
+    invalid_penalty: 0.05
+
+algorithm:
+  adv_estimator: grpo
+  norm_adv_by_std_in_grpo: false
+
+trainer:
+  experiment_name: arithmetic_drgrpo_process
+  default_local_dir: verl_impl/outputs/arithmetic_drgrpo_process
+  rollout_data_dir: verl_impl/outputs/arithmetic_drgrpo_process/rollout
+  validation_data_dir: verl_impl/outputs/arithmetic_drgrpo_process/val
+
+demo:
+  output_dir: verl_impl/outputs/arithmetic_drgrpo_process/hooks

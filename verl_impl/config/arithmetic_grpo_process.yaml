@@ -1,0 +1,32 @@
+# Proof-carrying process reward with standard GRPO (scalar outcome advantage).
+defaults:
+  - ppo_trainer
+  - arithmetic_base
+  - _self_
+
+hydra:
+  searchpath:
+    - pkg://verl.trainer.config
+  job:
+    chdir: false
+
+custom_reward_function:
+  reward_kwargs:
+    mode: process
+    final_weight: 1.0
+    process_weight: 0.5
+    format_weight: 0.1
+    invalid_penalty: 0.05
+
+algorithm:
+  adv_estimator: grpo
+  norm_adv_by_std_in_grpo: true
+
+trainer:
+  experiment_name: arithmetic_grpo_process
+  default_local_dir: verl_impl/outputs/arithmetic_grpo_process
+  rollout_data_dir: verl_impl/outputs/arithmetic_grpo_process/rollout
+  validation_data_dir: verl_impl/outputs/arithmetic_grpo_process/val
+
+demo:
+  output_dir: verl_impl/outputs/arithmetic_grpo_process/hooks

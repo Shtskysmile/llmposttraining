@@ -13,3 +13,8 @@ runs/*/training_args.bin
 runs/*/README.md
 runs/*/added_tokens.json
 runs/*/special_tokens_map.json
+
+# verl run artifacts (checkpoints, rollout dumps) are reproducible from scripts.
+verl_impl/outputs/
+kernel_meta/
+/outputs/
